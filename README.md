@@ -61,14 +61,46 @@ Histórico completo de alterações por sítio. A tela de detalhe exibe uma comp
 
 ## Instalação local
 
-### 1. Clone o repositório
+Existem duas formas de rodar o projeto localmente. **Docker** é o modo recomendado pois sobe a API e o painel juntos automaticamente.
+
+---
+
+### Opção A — Docker (recomendado)
+
+Requer o repositório raiz `sistema_arqueologico` com ambos os projetos (`sistema_arqueologico_api` e `sistema_arqueologico_web`).
+
+```bash
+# na pasta raiz sistema_arqueologico/
+docker compose up -d --build
+```
+
+O `entrypoint.sh` cuida automaticamente de `migrate` e `collectstatic` a cada inicialização. Nenhuma configuração adicional é necessária para desenvolvimento.
+
+| Serviço | URL |
+|---|---|
+| Painel web (Django) | http://localhost:8000 |
+| API (Laravel) | http://localhost:8001/api/v1 |
+
+Para rodar seeders na API:
+
+```bash
+docker compose exec api_php php artisan db:seed
+```
+
+---
+
+### Opção B — Python direto (sem Docker)
+
+Requer a API (`sistema_arqueologico_api`) rodando separadamente na porta `8001`.
+
+#### 1. Clone o repositório
 
 ```bash
 git clone https://github.com/Ryan-auchi/sistema_arqueologico_web.git
 cd sistema_arqueologico_web
 ```
 
-### 2. Crie e ative o ambiente virtual
+#### 2. Crie e ative o ambiente virtual
 
 ```bash
 python -m venv .venv
@@ -78,13 +110,13 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Instale as dependências
+#### 3. Instale as dependências
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure as variáveis de ambiente
+#### 4. Configure as variáveis de ambiente
 
 ```bash
 cp .env.example .env
@@ -101,13 +133,13 @@ API_BASE_URL=http://127.0.0.1:8001/api/v1
 API_TIMEOUT=15
 ```
 
-### 5. Execute as migrações
+#### 5. Execute as migrações
 
 ```bash
 python manage.py migrate
 ```
 
-### 6. Inicie o servidor
+#### 6. Inicie o servidor
 
 ```bash
 python manage.py runserver
