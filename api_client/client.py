@@ -379,12 +379,11 @@ def fetch_all_curadorias(*, status: str | None = None) -> tuple[dict[str, Any], 
 
 
 def fetch_curadoria(curadoria_id: str) -> dict[str, Any]:
-    """Busca uma curadoria pelo ID via endpoint direto — 1 request em vez de 3."""
-    response = _request("GET", f"/admin/curadorias/{curadoria_id}")
-    data = response.get("data") if isinstance(response, dict) and isinstance(response.get("data"), dict) else response
-    if not isinstance(data, dict):
-        raise ApiError("API response for curadoria detail was not an object")
-    return _normalize_curadoria(data)
+    for status in ("pendente", "aprovado", "rejeitado"):
+        for item in fetch_all_curadorias(status=status):
+            if item.get("id") == curadoria_id:
+                return item
+    raise ApiError("Curadoria não encontrada", 404)
 
 
 def update_curadoria_avaliacao(curadoria_id: str, payload: dict[str, Any]) -> dict[str, Any]:
