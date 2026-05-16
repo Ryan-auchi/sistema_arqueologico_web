@@ -280,7 +280,7 @@ def _normalize_curadoria(entry: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Thread-safe TTL cache for bens materiais
 # ---------------------------------------------------------------------------
-_BENS_CACHE_TTL = 60  # seconds
+_BENS_CACHE_TTL = 300  # seconds — 5 min é suficiente para navegação consecutiva
 _bens_cache_lock = threading.Lock()
 _bens_cache_data: tuple[dict[str, Any], ...] | None = None
 _bens_cache_ts: float = 0.0
@@ -379,11 +379,12 @@ def fetch_all_curadorias(*, status: str | None = None) -> tuple[dict[str, Any], 
 
 
 def fetch_curadoria(curadoria_id: str) -> dict[str, Any]:
-    for status in ("pendente", "aprovado", "rejeitado"):
-        for item in fetch_all_curadorias(status=status):
-            if item.get("id") == curadoria_id:
-                return item
-    raise ApiError("Curadoria não encontrada", 404)
+    """Busca uma curadoria pelo ID via endpoint direto — 1 request em vez de 3."""
+    response = _request("GET", f"/admin/curadorias/{curadoria_id}")
+    data = response.get("data") if isinstance(response, dict) and isinstance(response.get("data"), dict) else response
+    if not isinstance(data, dict):
+        raise ApiError("API response for curadoria detail was not an object")
+    return _normalize_curadoria(data)
 
 
 def update_curadoria_avaliacao(curadoria_id: str, payload: dict[str, Any]) -> dict[str, Any]:

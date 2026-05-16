@@ -287,21 +287,6 @@ def site_detail(request, sitio_id):
 
         return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
-    try:
-        published_sites = [_site_payload(site) for site in fetch_all_bens_materiais()]
-    except ApiError:
-        published_sites = []
-
-    previous_site_obj = None
-    next_site_obj = None
-    if published_sites:
-        current_index = next((index for index, site in enumerate(published_sites) if site.id == current_site.id), None)
-        if current_index is not None:
-            if current_index > 0:
-                previous_site_obj = published_sites[current_index - 1]
-            if current_index < len(published_sites) - 1:
-                next_site_obj = published_sites[current_index + 1]
-
     first_image = None
     for media_item in current_site.midias.all():
         if getattr(media_item, "tipo", "") == "imagem" and getattr(media_item, "url", ""):
@@ -333,8 +318,6 @@ def site_detail(request, sitio_id):
             "nav_active": "detalhe",
             "sitio": current_site,
             "hero_image_url": hero_image_url,
-            "previous_site": previous_site_obj,
-            "next_site": next_site_obj,
             "audit_entries": audit_entries,
             "site_geometry_geojson": site_geometry_geojson,
         },
