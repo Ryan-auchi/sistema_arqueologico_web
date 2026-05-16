@@ -1,113 +1,13 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% load static l10n %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{% static 'css/pesquisa_detail.css' %}">
+{% endblock %}
+
 {% block content %}
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Newsreader:wght@600;700&display=swap" rel="stylesheet">
-
-<style>
-    :root {
-        --figma-bg: #F8F9FA;
-        --figma-brown-dark: #312113;
-        --figma-brown-light: #BA9F8B;
-        --figma-text-main: #1C1917;
-        --figma-text-muted: #80756D;
-        --figma-border: rgba(210, 196, 187, 0.3);
-    }
-
-    body { background: var(--figma-bg); font-family: 'Inter', sans-serif; margin: 0; }
-
-    .hero-section {
-        position: relative; height: 480px; width: 100%;
-        background: url('{{ hero_image_url|default:"/static/images/default.png" }}') center/cover;
-    }
-    .hero-gradient {
-        position: absolute; inset: 0;
-        background: linear-gradient(0deg, rgba(49, 33, 19, 0.9) 0%, rgba(49, 33, 19, 0.3) 50%, rgba(49, 33, 19, 0) 100%);
-    }
-    .hero-container {
-        position: relative; z-index: 2; padding: 0 32px 40px;
-        max-width: 1280px; margin: 0 auto; height: 100%;
-        display: flex; flex-direction: column; justify-content: flex-end;
-    }
-
-    .hero-title {
-        font-family: 'Liberation Serif', serif; font-size: 60px; color: #FFF; margin: 8px 0;
-    }
-
-    .page-content {
-        max-width: 1280px; margin: 0 auto; padding: 48px 32px;
-        display: grid; grid-template-columns: 1fr 478px; gap: 64px;
-    }
-
-    .section-title-figma {
-        font-family: 'Liberation Serif', serif; font-size: 30px; color: var(--figma-brown-dark);
-        margin-bottom: 24px; border-bottom: 1px solid rgba(210, 196, 187, 0.2); padding-bottom: 16px;
-    }
-
-    .info-label {
-        font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--figma-text-muted);
-    }
-    .info-value { font-size: 16px; font-weight: 500; color: var(--figma-brown-dark); margin-top: 4px; }
-
-    .gray-box { background: #F3F4F5; border-radius: 4px; padding: 32px; margin-bottom: 40px; }
-    .status-card { background: #EDEEEF; border-radius: 8px; padding: 24px; }
-    .tag-figma { background: #E1E3E4; padding: 4px 8px; font-size: 10px; font-weight: 700; color: #4E453E; text-transform: uppercase; }
-
-    .publish-toggle-panel {
-        margin-top: 16px;
-        background: #FFFFFF;
-        border: 1px solid rgba(49, 33, 19, 0.15);
-        border-radius: 8px;
-        padding: 16px;
-    }
-
-    .publish-toggle-panel label {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 14px;
-        font-weight: 700;
-        color: #312113;
-    }
-
-    .publish-chip {
-        display: inline-block;
-        margin-top: 10px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-
-    .publish-chip.is-published {
-        background: #DCFCE7;
-        color: #166534;
-    }
-
-    .publish-chip.is-unpublished {
-        background: #FEE2E2;
-        color: #991B1B;
-    }
-
-    /* Estilo para seção IPHAN */
-    .iphan-box { background: #EDEEEF; border-radius: 8px; padding: 32px; }
-    .iphan-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-
-    /* Media Grid */
-    .media-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-top: 24px; }
-    .media-item { border-radius: 4px; overflow: hidden; height: 240px; }
-    .media-item img { width: 100%; height: 100%; object-fit: cover; }
-    .media-main { grid-row: span 2; height: 496px; }
-
-    .footer-meta {
-        background: #EDEEEF; padding: 48px 32px; margin-top: 64px;
-        display: flex; justify-content: space-between; align-items: center;
-    }
-</style>
-
-<div class="hero-section">
+<div class="hero-section" style="background-image: url('{{ hero_image_url|default:"/static/images/default.png" }}');">
     <div class="hero-gradient"></div>
     <div class="hero-container">
         <div style="background: var(--figma-brown-light); padding: 4px 12px; border-radius: 2px; display: inline-block;">
@@ -181,7 +81,12 @@
 
     <aside>
         <div style="background: #E1E3E4; border-radius: 8px; overflow: hidden;">
-            <div id="map" style="height: 256px;"></div>
+            <div id="map"
+                 style="height: 256px;"
+                 data-lat="{{ sitio.latitude|default:'null'|unlocalize }}"
+                 data-lng="{{ sitio.longitude|default:'null'|unlocalize }}"
+                 data-geometry="{{ site_geometry_geojson|default:''|escapejs }}">
+            </div>
             <div style="padding: 24px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
                     <div>
@@ -316,60 +221,9 @@
         <div class="info-value" style="font-size: 14px;">{{ sitio.atualizado_em|date:"d M Y" }}</div>
     </div>
 </footer>
+{% endblock %}
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    (function () {
-        const checkbox = document.getElementById('published-checkbox-detail');
-        const hiddenInput = document.getElementById('published-selected-input');
-        const chip = document.getElementById('publish-chip');
-
-        if (!checkbox || !hiddenInput || !chip) {
-            return;
-        }
-
-        checkbox.addEventListener('change', function () {
-            const isPublished = checkbox.checked;
-            hiddenInput.value = isPublished ? '1' : '0';
-            chip.classList.toggle('is-published', isPublished);
-            chip.classList.toggle('is-unpublished', !isPublished);
-            chip.textContent = isPublished ? 'Publicado' : 'Não publicado';
-        });
-    })();
-
-    var lat = {{ sitio.latitude|default:"null"|unlocalize }};
-    var lng = {{ sitio.longitude|default:"null"|unlocalize }};
-    var geometryRaw = '{{ site_geometry_geojson|default:""|escapejs }}';
-    var geometry = null;
-    if (geometryRaw) {
-        try {
-            geometry = JSON.parse(geometryRaw);
-        } catch (e) {
-            geometry = null;
-        }
-    }
-
-    var hasPoint = lat !== null && lng !== null;
-    var map = L.map('map', {zoomControl: false}).setView(hasPoint ? [lat, lng] : [-14.235, -51.925], hasPoint ? 14 : 4);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
-
-    if (geometry && (geometry.type === 'Polygon' || geometry.type === 'MultiPolygon')) {
-        var polygonLayer = L.geoJSON(geometry, {
-            style: {
-                color: '#14532D',
-                fillColor: '#22C55E',
-                fillOpacity: 0.18,
-                weight: 2,
-            },
-        }).addTo(map);
-
-        var polygonBounds = polygonLayer.getBounds();
-        if (polygonBounds.isValid()) {
-            map.fitBounds(polygonBounds, { padding: [20, 20] });
-        }
-    } else if (hasPoint) {
-        L.marker([lat, lng]).addTo(map);
-    }
-</script>
+<script src="{% static 'js/pesquisa_detail.js' %}"></script>
 {% endblock %}

@@ -416,7 +416,7 @@ h2 {
 }
 
 .research-layout {
-    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    grid-template-columns: 384px minmax(0, 1fr);
     align-items: start;
 }
 
@@ -464,6 +464,10 @@ h2 {
 .detail-grid {
     display: grid;
     gap: 18px;
+}
+
+.map-panel {
+    min-width: 0;
 }
 
 .result-grid {
@@ -642,6 +646,10 @@ h2 {
     .detail-layout,
     .detail-grid {
         grid-template-columns: 1fr;
+    }
+
+    .research-layout .filter-sidebar {
+        min-height: auto;
     }
 
     .filter-panel {

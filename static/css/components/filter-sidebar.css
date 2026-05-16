@@ -1,5 +1,5 @@
 .filter-sidebar {
-    width: 384px;
+    width: 100%;
     min-height: calc(100vh - var(--top-nav-height));
     background: #ffffff;
     border-right: 1px solid rgba(210, 196, 187, 0.1);
