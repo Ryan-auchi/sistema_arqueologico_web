@@ -1,6 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import get_user_model
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import get_user_model, login, logout
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -45,7 +44,9 @@ def auth_login(request):
     try:
         api_token, api_user = login_to_api(email, password)
     except ApiError as exc:
-        messages.error(request, "Credenciais inválidas.") if getattr(exc, "status_code", None) == 401 else messages.error(request, "Nao foi possivel autenticar na API.")
+        messages.error(request, "Credenciais inválidas.") if getattr(
+            exc, "status_code", None
+        ) == 401 else messages.error(request, "Nao foi possivel autenticar na API.")
         return redirect(_safe_redirect_target(request))
 
     UserModel = get_user_model()

@@ -38,10 +38,10 @@ from api_client.client import (
 )
 from pesquisa.models import Usuario
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Controle de Acesso
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def curador_or_admin_required(view_func):
     """Restringe a view a usuários com perfil curador ou admin."""
@@ -64,6 +64,7 @@ def curador_or_admin_required(view_func):
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers de dados
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _namespace(value):
     """Converte dict → SimpleNamespace recursivamente (para templates Django)."""
@@ -95,31 +96,31 @@ def _truncate(value, max_len: int = 72) -> str:
 
 def _status_label(status: str) -> str:
     return {
-        "pendente":  "Pendente",
-        "aprovado":  "Aprovado",
+        "pendente": "Pendente",
+        "aprovado": "Aprovado",
         "rejeitado": "Rejeitado",
     }.get(str(status or "").lower(), str(status or "").title())
 
 
 def _field_label(field_name: str) -> str:
     labels = {
-        "codigo_iphan":         "Código IPHAN",
-        "nome_bem":             "Nome do bem",
-        "nomes_populares":      "Nome popular",
-        "natureza":             "Natureza",
-        "tipo":                 "Tipo",
-        "meios_acesso":         "Meios de acesso",
-        "artefatos":            "Artefatos",
-        "uf":                   "Estado (UF)",
-        "municipio":            "Município",
-        "cep":                  "CEP",
-        "endereco":             "Endereço",
-        "latitude":             "Latitude",
-        "longitude":            "Longitude",
-        "geojson":              "Geometria (GeoJSON)",
-        "ano_registro":         "Ano de registro",
+        "codigo_iphan": "Código IPHAN",
+        "nome_bem": "Nome do bem",
+        "nomes_populares": "Nome popular",
+        "natureza": "Natureza",
+        "tipo": "Tipo",
+        "meios_acesso": "Meios de acesso",
+        "artefatos": "Artefatos",
+        "uf": "Estado (UF)",
+        "municipio": "Município",
+        "cep": "CEP",
+        "endereco": "Endereço",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "geojson": "Geometria (GeoJSON)",
+        "ano_registro": "Ano de registro",
         "descricao_atualizacao": "Descrição / Atualização",
-        "publicado":            "Publicado",
+        "publicado": "Publicado",
     }
     return labels.get(field_name, field_name.replace("_", " ").title())
 
@@ -127,6 +128,7 @@ def _field_label(field_name: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # Normalização de dados da API
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _normalize_user(raw: dict) -> dict:
     """Garante que o dict de usuário tenha a chave 'nome'."""
@@ -138,40 +140,34 @@ def _normalize_user(raw: dict) -> dict:
 
 def _curadoria_item(raw: dict) -> SimpleNamespace:
     """Transforma um dict de curadoria da API em namespace para o template."""
-    coleta      = raw.get("coleta") or {}
+    coleta = raw.get("coleta") or {}
     bem_material = raw.get("bem_material") or {}
-    usuario     = _normalize_user(raw.get("usuario") or {})
-    curador     = _normalize_user(raw.get("curador") or {})
+    usuario = _normalize_user(raw.get("usuario") or {})
+    curador = _normalize_user(raw.get("curador") or {})
 
     display_user = curador or usuario or {"nome": "Equipe de curadoria"}
 
-    iphan = (
-        bem_material.get("codigo_iphan")
-        or coleta.get("codigo_iphan")
-        or "IPHAN não informado"
-    )
-    nome = (
-        coleta.get("nome_bem")
-        or bem_material.get("nome_bem")
-        or "Sem nome informado"
-    )
+    iphan = bem_material.get("codigo_iphan") or coleta.get("codigo_iphan") or "IPHAN não informado"
+    nome = coleta.get("nome_bem") or bem_material.get("nome_bem") or "Sem nome informado"
     status_display = _status_label(raw.get("status"))
 
-    return _namespace({
-        "id":                    raw.get("id"),
-        "codigo_iphan_display":  iphan,
-        "nome_display":          nome,
-        "observacao":            raw.get("observacao") or "",
-        "criado_em":             _to_datetime(raw.get("created_at") or raw.get("data_avaliacao")),
-        "status":                raw.get("status") or "pendente",
-        "acao_resultante":       raw.get("acao_resultante") or "",
-        "bem_material_id":       raw.get("bem_material_id"),
-        "usuario":               display_user,
-        "coleta":                coleta,
-        "bem_material":          bem_material,
-        "curador":               curador,
-        "get_status_display":    lambda s=status_display: s,
-    })
+    return _namespace(
+        {
+            "id": raw.get("id"),
+            "codigo_iphan_display": iphan,
+            "nome_display": nome,
+            "observacao": raw.get("observacao") or "",
+            "criado_em": _to_datetime(raw.get("created_at") or raw.get("data_avaliacao")),
+            "status": raw.get("status") or "pendente",
+            "acao_resultante": raw.get("acao_resultante") or "",
+            "bem_material_id": raw.get("bem_material_id"),
+            "usuario": display_user,
+            "coleta": coleta,
+            "bem_material": bem_material,
+            "curador": curador,
+            "get_status_display": lambda s=status_display: s,
+        }
+    )
 
 
 def _incoming_data(curadoria_raw: dict) -> dict:
@@ -179,32 +175,31 @@ def _incoming_data(curadoria_raw: dict) -> dict:
     Extrai os dados da coleta + dados_coletados como dicionário
     comparável com os campos do BemMaterial.
     """
-    coleta   = dict(curadoria_raw.get("coleta") or {})
-    dados    = coleta.get("dados_coletados") or {}
-    bem      = curadoria_raw.get("bem_material") or {}
+    coleta = dict(curadoria_raw.get("coleta") or {})
+    dados = coleta.get("dados_coletados") or {}
+    bem = curadoria_raw.get("bem_material") or {}
 
     incoming = dict(coleta)
     incoming.update(dados if isinstance(dados, dict) else {})
 
     # Normaliza aliases entre coleta e bem_material.
-    incoming["nome_bem"]             = incoming.get("nome_bem") or bem.get("nome_bem") or ""
-    incoming["nomes_populares"]      = incoming.get("nomes_populares") or bem.get("nomes_populares") or ""
-    incoming["codigo_iphan"]         = bem.get("codigo_iphan") or incoming.get("codigo_iphan") or ""
-    incoming["natureza"]             = incoming.get("natureza_bem") or incoming.get("natureza") or bem.get("natureza") or ""
-    incoming["tipo"]                 = incoming.get("tipo_bem") or incoming.get("tipo") or bem.get("tipo") or ""
-    incoming["meios_acesso"]         = incoming.get("meios_acesso") or bem.get("meios_acesso") or ""
-    incoming["artefatos"]            = incoming.get("artefatos") or bem.get("artefatos") or []
-    incoming["uf"]                   = incoming.get("uf") or bem.get("uf") or ""
-    incoming["municipio"]            = incoming.get("municipio") or bem.get("municipio") or ""
-    incoming["cep"]                  = incoming.get("cep") or bem.get("cep") or ""
-    incoming["endereco"]             = incoming.get("endereco") or bem.get("endereco") or ""
-    incoming["latitude"]             = incoming.get("latitude") or bem.get("latitude") or ""
-    incoming["longitude"]            = incoming.get("longitude") or bem.get("longitude") or ""
-    incoming["geojson"]              = incoming.get("geojson") or bem.get("geojson") or {}
-    incoming["ano_registro"]         = incoming.get("ano_registro") or bem.get("ano_registro")
+    incoming["nome_bem"] = incoming.get("nome_bem") or bem.get("nome_bem") or ""
+    incoming["nomes_populares"] = incoming.get("nomes_populares") or bem.get("nomes_populares") or ""
+    incoming["codigo_iphan"] = bem.get("codigo_iphan") or incoming.get("codigo_iphan") or ""
+    incoming["natureza"] = incoming.get("natureza_bem") or incoming.get("natureza") or bem.get("natureza") or ""
+    incoming["tipo"] = incoming.get("tipo_bem") or incoming.get("tipo") or bem.get("tipo") or ""
+    incoming["meios_acesso"] = incoming.get("meios_acesso") or bem.get("meios_acesso") or ""
+    incoming["artefatos"] = incoming.get("artefatos") or bem.get("artefatos") or []
+    incoming["uf"] = incoming.get("uf") or bem.get("uf") or ""
+    incoming["municipio"] = incoming.get("municipio") or bem.get("municipio") or ""
+    incoming["cep"] = incoming.get("cep") or bem.get("cep") or ""
+    incoming["endereco"] = incoming.get("endereco") or bem.get("endereco") or ""
+    incoming["latitude"] = incoming.get("latitude") or bem.get("latitude") or ""
+    incoming["longitude"] = incoming.get("longitude") or bem.get("longitude") or ""
+    incoming["geojson"] = incoming.get("geojson") or bem.get("geojson") or {}
+    incoming["ano_registro"] = incoming.get("ano_registro") or bem.get("ano_registro")
     incoming["descricao_atualizacao"] = (
-        incoming.get("descricao") or incoming.get("descricao_atualizacao")
-        or bem.get("descricao_atualizacao") or ""
+        incoming.get("descricao") or incoming.get("descricao_atualizacao") or bem.get("descricao_atualizacao") or ""
     )
     return incoming
 
@@ -220,17 +215,28 @@ def _build_comparisons(curadoria_raw: dict) -> list[dict]:
       is_new_field    — True quando o campo era null/vazio no bem oficial
       is_different    — True quando os valores diferem (inclui is_new_field)
     """
-    incoming     = _incoming_data(curadoria_raw)
+    incoming = _incoming_data(curadoria_raw)
     official_raw = curadoria_raw.get("bem_material") or {}
-    official     = normalize_bem_material(official_raw) if official_raw else {}
+    official = normalize_bem_material(official_raw) if official_raw else {}
     is_new_record = not bool(official_raw)
 
     field_order = [
-        "codigo_iphan", "nome_bem", "nomes_populares",
-        "natureza", "tipo", "artefatos", "meios_acesso",
-        "uf", "municipio", "cep", "endereco",
-        "latitude", "longitude", "geojson",
-        "ano_registro", "descricao_atualizacao",
+        "codigo_iphan",
+        "nome_bem",
+        "nomes_populares",
+        "natureza",
+        "tipo",
+        "artefatos",
+        "meios_acesso",
+        "uf",
+        "municipio",
+        "cep",
+        "endereco",
+        "latitude",
+        "longitude",
+        "geojson",
+        "ano_registro",
+        "descricao_atualizacao",
     ]
 
     comparisons = []
@@ -249,41 +255,45 @@ def _build_comparisons(curadoria_raw: dict) -> list[dict]:
         is_new_field = is_new_record or (not official_val and bool(incoming_val))
         is_different = official_val != incoming_val
 
-        comparisons.append({
-            "field_name":     field,
-            "label":          _field_label(field),
-            # Chaves que o template usa:
-            "incoming_value": incoming_val,
-            "official_value": official_val,
-            "is_new_field":   is_new_field,
-            "is_different":   is_different,
-            # Aliases para retrocompatibilidade:
-            "new_value":      incoming_val,
-            "old_value":      official_val,
-            "changed":        is_different,
-        })
+        comparisons.append(
+            {
+                "field_name": field,
+                "label": _field_label(field),
+                # Chaves que o template usa:
+                "incoming_value": incoming_val,
+                "official_value": official_val,
+                "is_new_field": is_new_field,
+                "is_different": is_different,
+                # Aliases para retrocompatibilidade:
+                "new_value": incoming_val,
+                "old_value": official_val,
+                "changed": is_different,
+            }
+        )
 
     return comparisons
 
 
 def _audit_entry(raw: dict) -> SimpleNamespace:
     """Transforma um dict de auditoria da API em namespace."""
-    usuario  = _normalize_user(raw.get("usuario") or {})
+    usuario = _normalize_user(raw.get("usuario") or {})
     curadoria = raw.get("curadoria") or {}
 
-    return _namespace({
-        "id":            raw.get("id"),
-        "usuario":       usuario,
-        "entidade_tipo": raw.get("entidade_tipo"),
-        "entidade_id":   raw.get("entidade_id"),
-        "curadoria_id":  raw.get("curadoria_id"),
-        "operacao":      raw.get("operacao"),
-        "meio":          raw.get("meio"),
-        "data_hora":     _to_datetime(raw.get("data_hora") or raw.get("created_at")),
-        "valor_anterior": raw.get("valor_anterior") or {},
-        "valor_novo":    raw.get("valor_novo") or {},
-        "curadoria":     curadoria,
-    })
+    return _namespace(
+        {
+            "id": raw.get("id"),
+            "usuario": usuario,
+            "entidade_tipo": raw.get("entidade_tipo"),
+            "entidade_id": raw.get("entidade_id"),
+            "curadoria_id": raw.get("curadoria_id"),
+            "operacao": raw.get("operacao"),
+            "meio": raw.get("meio"),
+            "data_hora": _to_datetime(raw.get("data_hora") or raw.get("created_at")),
+            "valor_anterior": raw.get("valor_anterior") or {},
+            "valor_novo": raw.get("valor_novo") or {},
+            "curadoria": curadoria,
+        }
+    )
 
 
 def _op_class(operacao: str) -> str:
@@ -303,11 +313,21 @@ _AUDIT_ALWAYS_SHOW = {"nome_bem", "natureza", "tipo", "publicado"}
 
 # Ordem preferencial de exibição dos campos na tabela de auditoria.
 _AUDIT_FIELD_ORDER = [
-    "nome_bem", "natureza", "tipo", "publicado",
-    "nomes_populares", "artefatos", "meios_acesso",
-    "uf", "municipio", "cep", "endereco",
-    "latitude", "longitude",
-    "ano_registro", "descricao_atualizacao",
+    "nome_bem",
+    "natureza",
+    "tipo",
+    "publicado",
+    "nomes_populares",
+    "artefatos",
+    "meios_acesso",
+    "uf",
+    "municipio",
+    "cep",
+    "endereco",
+    "latitude",
+    "longitude",
+    "ano_registro",
+    "descricao_atualizacao",
 ]
 
 
@@ -331,10 +351,10 @@ def _field_comparisons_from_audit(audit_ns) -> list[dict]:
         return {}
 
     before = _as_dict(getattr(audit_ns, "valor_anterior", {}))
-    after  = _as_dict(getattr(audit_ns, "valor_novo",     {}))
+    after = _as_dict(getattr(audit_ns, "valor_novo", {}))
 
     keys_changed = set(after.keys())
-    keys_always  = _AUDIT_ALWAYS_SHOW & (set(before.keys()) | set(after.keys()))
+    keys_always = _AUDIT_ALWAYS_SHOW & (set(before.keys()) | set(after.keys()))
     keys_to_show = keys_changed | keys_always
 
     ordered = [f for f in _AUDIT_FIELD_ORDER if f in keys_to_show]
@@ -350,13 +370,15 @@ def _field_comparisons_from_audit(audit_ns) -> list[dict]:
             # Campo de contexto (always-show) não modificado — mesmo valor dos dois lados.
             new_val = old_val
 
-        comparisons.append({
-            "field_name": field,
-            "label":      _field_label(field),
-            "old_value":  old_val,
-            "new_value":  new_val,
-            "changed":    old_val != new_val,
-        })
+        comparisons.append(
+            {
+                "field_name": field,
+                "label": _field_label(field),
+                "old_value": old_val,
+                "new_value": new_val,
+                "changed": old_val != new_val,
+            }
+        )
 
     return comparisons
 
@@ -364,6 +386,7 @@ def _field_comparisons_from_audit(audit_ns) -> list[dict]:
 # ─────────────────────────────────────────────────────────────────────────────
 # Views
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @curador_or_admin_required
 def curadoria_fila(request):
@@ -388,22 +411,27 @@ def curadoria_fila(request):
 
     if query:
         curadorias = [
-            c for c in curadorias
+            c
+            for c in curadorias
             if query in str(c.codigo_iphan_display).lower()
             or query in str(c.nome_display).lower()
             or query in str(c.observacao).lower()
         ]
 
     paginator = Paginator(curadorias, 10)
-    page_obj  = paginator.get_page(request.GET.get("page"))
+    page_obj = paginator.get_page(request.GET.get("page"))
 
-    return render(request, "curador/curadoria_fila.html", {
-        "nav_active":      "curadoria",
-        "page_obj":        page_obj,
-        "query":           request.GET.get("q", "").strip(),
-        "total_pendentes": len(curadorias),
-        "conflitos":       len([c for c in curadorias if c.observacao]),
-    })
+    return render(
+        request,
+        "curador/curadoria_fila.html",
+        {
+            "nav_active": "curadoria",
+            "page_obj": page_obj,
+            "query": request.GET.get("q", "").strip(),
+            "total_pendentes": len(curadorias),
+            "conflitos": len([c for c in curadorias if c.observacao]),
+        },
+    )
 
 
 @curador_or_admin_required
@@ -428,27 +456,23 @@ def curadoria_revisao(request, curadoria_id):
 
         if action == "rejeitar":
             payload = {
-                "status":          "rejeitado",
+                "status": "rejeitado",
                 "acao_resultante": "rejeitar",
-                "observacao":      request.POST.get("observacao") or None,
+                "observacao": request.POST.get("observacao") or None,
             }
 
         elif action == "aprovar_mesclar":
             # Se a curadoria já tem bem_material_id → atualiza o bem existente.
             # Caso contrário → cria novo sítio.
-            bem_id = (
-                request.POST.get("bem_material_id")
-                or curadoria_raw.get("bem_material_id")
-                or None
-            )
+            bem_id = request.POST.get("bem_material_id") or curadoria_raw.get("bem_material_id") or None
             acao = "atualizarSitio" if bem_id else "criarSitio"
             publicado = request.POST.get("published_selected", "0") == "1"
 
             payload = {
-                "status":          "aprovado",
+                "status": "aprovado",
                 "acao_resultante": acao,
-                "observacao":      request.POST.get("observacao") or None,
-                "publicado":       publicado,
+                "observacao": request.POST.get("observacao") or None,
+                "publicado": publicado,
             }
             if acao == "atualizarSitio":
                 payload["bem_material_id"] = bem_id
@@ -456,9 +480,7 @@ def curadoria_revisao(request, curadoria_id):
                 # Campos selecionados individualmente pelo curador no template.
                 # selected_fields é um JSON array de nomes de campos (ex.: ["nome_bem","municipio"]).
                 try:
-                    selected_field_names = json.loads(
-                        request.POST.get("selected_fields", "[]")
-                    )
+                    selected_field_names = json.loads(request.POST.get("selected_fields", "[]"))
                     if not isinstance(selected_field_names, list):
                         selected_field_names = []
                 except (ValueError, TypeError):
@@ -467,9 +489,20 @@ def curadoria_revisao(request, curadoria_id):
                 incoming = _incoming_data(curadoria_raw)
 
                 _all_fields = [
-                    "nome_bem", "nomes_populares", "natureza", "tipo", "artefatos",
-                    "meios_acesso", "uf", "municipio", "cep", "endereco",
-                    "latitude", "longitude", "ano_registro", "descricao_atualizacao",
+                    "nome_bem",
+                    "nomes_populares",
+                    "natureza",
+                    "tipo",
+                    "artefatos",
+                    "meios_acesso",
+                    "uf",
+                    "municipio",
+                    "cep",
+                    "endereco",
+                    "latitude",
+                    "longitude",
+                    "ano_registro",
+                    "descricao_atualizacao",
                 ]
 
                 if selected_field_names:
@@ -481,11 +514,7 @@ def curadoria_revisao(request, curadoria_id):
                     }
                 else:
                     # Nenhum campo específico selecionado → aplica todos não-vazios.
-                    campos = {
-                        f: incoming.get(f)
-                        for f in _all_fields
-                        if incoming.get(f) not in (None, "", [])
-                    }
+                    campos = {f: incoming.get(f) for f in _all_fields if incoming.get(f) not in (None, "", [])}
 
                 if campos:
                     payload["campos"] = campos
@@ -507,11 +536,11 @@ def curadoria_revisao(request, curadoria_id):
         return redirect("curadoria-fila")
 
     # ── GET ──────────────────────────────────────────────────────────────────
-    incoming_data       = _incoming_data(curadoria_raw)
-    official_site_raw   = curadoria_raw.get("bem_material") or {}
+    incoming_data = _incoming_data(curadoria_raw)
+    official_site_raw = curadoria_raw.get("bem_material") or {}
     official_record_exists = bool(official_site_raw)
-    official_site       = _namespace(normalize_bem_material(official_site_raw)) if official_site_raw else None
-    comparisons         = _build_comparisons(curadoria_raw)
+    official_site = _namespace(normalize_bem_material(official_site_raw)) if official_site_raw else None
+    comparisons = _build_comparisons(curadoria_raw)
 
     # Auditorias relacionadas à curadoria.
     audit_entries = []
@@ -537,34 +566,36 @@ def curadoria_revisao(request, curadoria_id):
         or "Equipe de curadoria"
     )
 
-    curadoria_ctx = _namespace({
-        "id":             curadoria_raw.get("id"),
-        "usuario":        {"nome": request_user},
-        "observacao":     curadoria_raw.get("observacao") or "",
-        "status":         curadoria_raw.get("status") or "pendente",
-        "acao_resultante": curadoria_raw.get("acao_resultante") or "",
-    })
-
-    iphan = (
-        official_site_raw.get("codigo_iphan")
-        or incoming_data.get("codigo_iphan")
-        or "IPHAN não informado"
+    curadoria_ctx = _namespace(
+        {
+            "id": curadoria_raw.get("id"),
+            "usuario": {"nome": request_user},
+            "observacao": curadoria_raw.get("observacao") or "",
+            "status": curadoria_raw.get("status") or "pendente",
+            "acao_resultante": curadoria_raw.get("acao_resultante") or "",
+        }
     )
 
-    return render(request, "curador/curadoria_revisao.html", {
-        "nav_active":            "curadoria",
-        "curadoria":             curadoria_ctx,
-        "codigo_iphan":          iphan,
-        "display_nome":          incoming_data.get("nome_bem") or "Novo registro sem nome",
-        "official_site":         official_site,
-        "official_record_exists": official_record_exists,
-        "comparisons":           comparisons,
-        "incoming_data":         incoming_data,
-        "audit_entries":         audit_entries,
-        "merged":                request.GET.get("merged") == "1",
-        "default_published":     bool(official_site_raw.get("publicado")) if official_site_raw else False,
-        "requires_iphan_form":   not official_record_exists,
-    })
+    iphan = official_site_raw.get("codigo_iphan") or incoming_data.get("codigo_iphan") or "IPHAN não informado"
+
+    return render(
+        request,
+        "curador/curadoria_revisao.html",
+        {
+            "nav_active": "curadoria",
+            "curadoria": curadoria_ctx,
+            "codigo_iphan": iphan,
+            "display_nome": incoming_data.get("nome_bem") or "Novo registro sem nome",
+            "official_site": official_site,
+            "official_record_exists": official_record_exists,
+            "comparisons": comparisons,
+            "incoming_data": incoming_data,
+            "audit_entries": audit_entries,
+            "merged": request.GET.get("merged") == "1",
+            "default_published": bool(official_site_raw.get("publicado")) if official_site_raw else False,
+            "requires_iphan_form": not official_record_exists,
+        },
+    )
 
 
 @curador_or_admin_required
@@ -576,7 +607,7 @@ def audit_logs(request):
     A paginação aqui segue exatamente a paginação da API.
     """
     query = request.GET.get("q", "").strip().lower()
-    page  = max(1, int(request.GET.get("page", 1) or 1))
+    page = max(1, int(request.GET.get("page", 1) or 1))
 
     try:
         items, meta = list_auditorias(page=page)
@@ -585,33 +616,37 @@ def audit_logs(request):
 
     entries = []
     for item in items:
-        user    = _normalize_user(item.get("usuario") or {})
-        op      = item.get("operacao") or ""
-        before  = item.get("valor_anterior") or {}
-        after   = item.get("valor_novo") or {}
+        user = _normalize_user(item.get("usuario") or {})
+        op = item.get("operacao") or ""
+        before = item.get("valor_anterior") or {}
+        after = item.get("valor_novo") or {}
 
-        entries.append({
-            "audit_id":        item.get("id"),
-            "created_at":      _to_datetime(item.get("data_hora") or item.get("created_at")),
-            "user_name":       user.get("nome") or user.get("name") or user.get("email") or "Sistema",
-            "operation":       op,
-            "operation_label": op.replace("_", " ").upper() or "ATUALIZAR",
-            "operation_class": _op_class(op),
-            "entity":          item.get("entidade_tipo"),
-            "target":          (
-                f"{item.get('entidade_tipo')} #{item.get('entidade_id')}"
-                if item.get("entidade_id") else item.get("entidade_tipo")
-            ),
-            "before":          before,
-            "after":           after,
-            "before_preview":  _truncate(json.dumps(before, ensure_ascii=False)),
-            "after_preview":   _truncate(json.dumps(after,  ensure_ascii=False)),
-        })
+        entries.append(
+            {
+                "audit_id": item.get("id"),
+                "created_at": _to_datetime(item.get("data_hora") or item.get("created_at")),
+                "user_name": user.get("nome") or user.get("name") or user.get("email") or "Sistema",
+                "operation": op,
+                "operation_label": op.replace("_", " ").upper() or "ATUALIZAR",
+                "operation_class": _op_class(op),
+                "entity": item.get("entidade_tipo"),
+                "target": (
+                    f"{item.get('entidade_tipo')} #{item.get('entidade_id')}"
+                    if item.get("entidade_id")
+                    else item.get("entidade_tipo")
+                ),
+                "before": before,
+                "after": after,
+                "before_preview": _truncate(json.dumps(before, ensure_ascii=False)),
+                "after_preview": _truncate(json.dumps(after, ensure_ascii=False)),
+            }
+        )
 
     # Filtro local por query (busca no conjunto retornado pela API).
     if query:
         entries = [
-            e for e in entries
+            e
+            for e in entries
             if query in str(e["user_name"]).lower()
             or query in str(e["operation_label"]).lower()
             or query in str(e["entity"]).lower()
@@ -620,19 +655,23 @@ def audit_logs(request):
 
     # Paginação reflete exatamente o que a API retornou.
     paginator = Paginator(entries, meta.get("per_page", 50))
-    page_obj  = paginator.get_page(meta.get("page", 1))
+    page_obj = paginator.get_page(meta.get("page", 1))
 
-    return render(request, "curador/audit_logs.html", {
-        "nav_active":   "audit",
-        "page_obj":     page_obj,
-        "query":        request.GET.get("q", "").strip(),
-        "total_logs":   meta.get("total", len(entries)),
-        "sync_status":  "NOMINAL",
-        "total_users":  len({e["user_name"] for e in entries}),
-        # Paginação da API (para os links anterior/próximo no template).
-        "api_page":     meta.get("page", 1),
-        "api_pages":    meta.get("pages", 1),
-    })
+    return render(
+        request,
+        "curador/audit_logs.html",
+        {
+            "nav_active": "audit",
+            "page_obj": page_obj,
+            "query": request.GET.get("q", "").strip(),
+            "total_logs": meta.get("total", len(entries)),
+            "sync_status": "NOMINAL",
+            "total_users": len({e["user_name"] for e in entries}),
+            # Paginação da API (para os links anterior/próximo no template).
+            "api_page": meta.get("page", 1),
+            "api_pages": meta.get("pages", 1),
+        },
+    )
 
 
 @curador_or_admin_required
@@ -655,18 +694,24 @@ def audit_detail(request, audit_id):
     if raw.get("curadoria_id"):
         try:
             curadoria_raw = fetch_curadoria(raw["curadoria_id"])
-            audit_ns.curadoria = _namespace({
-                "observacao": curadoria_raw.get("observacao") or "",
-                "status":     curadoria_raw.get("status") or "",
-            })
+            audit_ns.curadoria = _namespace(
+                {
+                    "observacao": curadoria_raw.get("observacao") or "",
+                    "status": curadoria_raw.get("status") or "",
+                }
+            )
         except ApiError:
             audit_ns.curadoria = _namespace({"observacao": "", "status": ""})
 
     comparisons = _field_comparisons_from_audit(audit_ns)
 
-    return render(request, "curador/audit_detail.html", {
-        "nav_active":  "audit",
-        "audit_entry": audit_ns,
-        "comparisons": comparisons,
-        "audit_id":    raw.get("id"),
-    })
+    return render(
+        request,
+        "curador/audit_detail.html",
+        {
+            "nav_active": "audit",
+            "audit_entry": audit_ns,
+            "comparisons": comparisons,
+            "audit_id": raw.get("id"),
+        },
+    )

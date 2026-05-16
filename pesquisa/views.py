@@ -16,7 +16,6 @@ from api_client.client import (
     update_bem_material,
 )
 
-
 ENTITY_TYPE_BEM_MATERIAL = "App\\Models\\BemMaterial"
 
 
@@ -28,10 +27,7 @@ class RemoteRelationList(list):
 def _as_namespace(value):
     if isinstance(value, dict):
         return SimpleNamespace(
-            **{
-                key: inner_value if key == "raw" else _as_namespace(inner_value)
-                for key, inner_value in value.items()
-            }
+            **{key: inner_value if key == "raw" else _as_namespace(inner_value) for key, inner_value in value.items()}
         )
     if isinstance(value, RemoteRelationList):
         return RemoteRelationList([_as_namespace(item) for item in value])
@@ -54,12 +50,12 @@ def _site_payload(site):
     latitude = normalized.get("latitude")
     longitude = normalized.get("longitude")
     nature = normalized.get("natureza") or "Não informado"
-    midias = RemoteRelationList([
-        _as_namespace(media)
-        for media in normalized.get("midias") or []
-        if isinstance(media, dict)
-    ])
-    responsavel = _as_namespace(normalized.get("responsavel") or {}) if isinstance(normalized.get("responsavel"), dict) else {}
+    midias = RemoteRelationList(
+        [_as_namespace(media) for media in normalized.get("midias") or [] if isinstance(media, dict)]
+    )
+    responsavel = (
+        _as_namespace(normalized.get("responsavel") or {}) if isinstance(normalized.get("responsavel"), dict) else {}
+    )
 
     payload = {
         "id": normalized.get("id"),
@@ -139,7 +135,9 @@ def _site_payload_to_dict(site):
     }
 
 
-def _site_filter(site, *, query="", state="", municipality="", conservation="", legal_level="", nature="", site_type=""):
+def _site_filter(
+    site, *, query="", state="", municipality="", conservation="", legal_level="", nature="", site_type=""
+):
     search_target = " ".join(
         [
             str(site.name or ""),
@@ -183,7 +181,8 @@ def _filtered_sites(request):
         sites = []
 
     filtered = [
-        site for site in sites
+        site
+        for site in sites
         if _site_filter(
             site,
             query=query,
@@ -222,7 +221,9 @@ def _filter_options(sites):
 
 def pesquisa_mapa(request):
     sites, current_filters = _filtered_sites(request)
-    state_options, municipality_options, conservation_options, legal_level_options, nature_options, type_options = _filter_options(sites)
+    state_options, municipality_options, conservation_options, legal_level_options, nature_options, type_options = (
+        _filter_options(sites)
+    )
 
     return render(
         request,
@@ -247,7 +248,9 @@ def pesquisa_lista(request):
     paginator = Paginator(sites, 6)
     page_obj = paginator.get_page(request.GET.get("page"))
 
-    state_options, municipality_options, conservation_options, legal_level_options, nature_options, type_options = _filter_options(sites)
+    state_options, municipality_options, conservation_options, legal_level_options, nature_options, type_options = (
+        _filter_options(sites)
+    )
 
     return render(
         request,
@@ -317,7 +320,11 @@ def site_detail(request, sitio_id):
 
     site_geometry_geojson = ""
     if current_site.geometry:
-        site_geometry_geojson = json.dumps(current_site.geometry, ensure_ascii=False) if isinstance(current_site.geometry, dict) else str(current_site.geometry)
+        site_geometry_geojson = (
+            json.dumps(current_site.geometry, ensure_ascii=False)
+            if isinstance(current_site.geometry, dict)
+            else str(current_site.geometry)
+        )
 
     return render(
         request,
