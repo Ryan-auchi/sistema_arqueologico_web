@@ -1,0 +1,207 @@
+[
+  {
+    "model": "pesquisa.usuario",
+    "pk": 1,
+    "fields": {
+      "password": "!",
+      "last_login": null,
+      "is_superuser": false,
+      "criado_em": "2026-04-01T10:00:00Z",
+      "atualizado_em": "2026-04-01T10:00:00Z",
+      "nome": "Ana Coletora",
+      "email": "ana@example.com",
+      "perfil": "coletor",
+      "classificacao": "estudante",
+      "ativo": true,
+      "is_staff": false,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "pesquisa.usuario",
+    "pk": 2,
+    "fields": {
+      "password": "!",
+      "last_login": null,
+      "is_superuser": false,
+      "criado_em": "2026-04-01T10:05:00Z",
+      "atualizado_em": "2026-04-01T10:05:00Z",
+      "nome": "Bruno Curador",
+      "email": "bruno@example.com",
+      "perfil": "curador",
+      "classificacao": "professor",
+      "ativo": true,
+      "is_staff": true,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "pesquisa.coleta",
+    "pk": 1,
+    "fields": {
+      "usuario": 1,
+      "data_coleta": "2026-04-02T08:00:00Z",
+      "status_sincronizacao": "sincronizado",
+      "nome_bem": "Lapa Verde",
+      "natureza": "arqueologico",
+      "tipo": "sitio",
+      "uf": "BA",
+      "latitude": "-12.561230",
+      "longitude": "-41.392140",
+      "artefatos": ["ceramica", "litico"],
+      "versao": 1,
+      "dados_coletados": {"origem": "app"},
+      "deletado_em": null,
+      "criado_em": "2026-04-02T08:00:00Z",
+      "atualizado_em": "2026-04-02T08:00:00Z"
+    }
+  },
+  {
+    "model": "pesquisa.coleta",
+    "pk": 2,
+    "fields": {
+      "usuario": 1,
+      "data_coleta": "2026-04-03T09:00:00Z",
+      "status_sincronizacao": "sincronizado",
+      "nome_bem": "Toca do Sol",
+      "natureza": "arqueologico",
+      "tipo": "sitio",
+      "uf": "PI",
+      "latitude": "-8.827500",
+      "longitude": "-42.550600",
+      "artefatos": ["ceramica"],
+      "versao": 1,
+      "dados_coletados": {"origem": "app"},
+      "deletado_em": null,
+      "criado_em": "2026-04-03T09:00:00Z",
+      "atualizado_em": "2026-04-03T09:00:00Z"
+    }
+  },
+  {
+    "model": "pesquisa.bensmateriais",
+    "pk": 1,
+    "fields": {
+      "coleta": 1,
+      "codigo_iphan": "IPH-BA-0001",
+      "nome_bem": "Lapa Verde",
+      "nomes_populares": "Gruta Verde",
+      "natureza": "arqueologico",
+      "tipo": "sitio",
+      "meios_acesso": "Estrada vicinal",
+      "artefatos": ["ceramica", "litico"],
+      "publicado": true,
+      "uf": "BA",
+      "municipio": "Lencois",
+      "cep": "46960-000",
+      "endereco": "Zona rural",
+      "latitude": "-12.561230",
+      "longitude": "-41.392140",
+      "geojson": null,
+      "ano_registro": 2019,
+      "descricao_atualizacao": "Descricao sintetica do sitio.",
+      "deletado_em": null,
+      "criado_em": "2026-04-02T08:10:00Z",
+      "atualizado_em": "2026-04-02T08:10:00Z"
+    }
+  },
+  {
+    "model": "pesquisa.bensmateriais",
+    "pk": 2,
+    "fields": {
+      "coleta": 2,
+      "codigo_iphan": "IPH-PI-0002",
+      "nome_bem": "Toca do Sol",
+      "nomes_populares": "Toca Alta",
+      "natureza": "arqueologico",
+      "tipo": "sitio",
+      "meios_acesso": "Trilha",
+      "artefatos": ["ceramica"],
+      "publicado": true,
+      "uf": "PI",
+      "municipio": "Sao Raimundo Nonato",
+      "cep": "64770-000",
+      "endereco": "Area de pesquisa",
+      "latitude": "-8.827500",
+      "longitude": "-42.550600",
+      "geojson": null,
+      "ano_registro": 2020,
+      "descricao_atualizacao": "Descricao sintetica do sitio 2.",
+      "deletado_em": null,
+      "criado_em": "2026-04-03T09:10:00Z",
+      "atualizado_em": "2026-04-03T09:10:00Z"
+    }
+  },
+  {
+    "model": "pesquisa.responsaveissitio",
+    "pk": 1,
+    "fields": {
+      "bem_material": 1,
+      "contato_nome": "Equipe IPHAN",
+      "contato_email": "contato@iphan.gov.br",
+      "contato_telefone": "(61) 0000-0000",
+      "criado_em": "2026-04-02T08:30:00Z",
+      "atualizado_em": "2026-04-02T08:30:00Z"
+    }
+  },
+  {
+    "model": "pesquisa.responsaveissitio",
+    "pk": 2,
+    "fields": {
+      "bem_material": 2,
+      "contato_nome": "Equipe IPHAN",
+      "contato_email": "contato@iphan.gov.br",
+      "contato_telefone": "(61) 0000-0000",
+      "criado_em": "2026-04-03T09:30:00Z",
+      "atualizado_em": "2026-04-03T09:30:00Z"
+    }
+  },
+  {
+    "model": "curador.curadoria",
+    "pk": 1,
+    "fields": {
+      "coleta": 1,
+      "bem_material": 1,
+      "usuario": 2,
+      "status": "aprovado",
+      "acao_resultante": "atualizarSitio",
+      "data_avaliacao": "2026-04-04T10:00:00Z",
+      "observacao": "Aprovado",
+      "criado_em": "2026-04-04T09:00:00Z",
+      "atualizado_em": "2026-04-04T10:00:00Z"
+    }
+  },
+  {
+    "model": "curador.curadoria",
+    "pk": 2,
+    "fields": {
+      "coleta": 2,
+      "bem_material": null,
+      "usuario": 2,
+      "status": "rejeitado",
+      "acao_resultante": "rejeitar",
+      "data_avaliacao": "2026-04-04T10:10:00Z",
+      "observacao": "Rejeitado",
+      "criado_em": "2026-04-04T09:10:00Z",
+      "atualizado_em": "2026-04-04T10:10:00Z"
+    }
+  },
+  {
+    "model": "curador.auditoria",
+    "pk": 1,
+    "fields": {
+      "usuario": 2,
+      "entidade_tipo": "BENS_MATERIAIS",
+      "entidade_id": "1",
+      "curadoria": 1,
+      "operacao": "ALTERACAO",
+      "meio": "operacao_manual",
+      "data_hora": "2026-04-04T10:00:00Z",
+      "valor_anterior": {"nome_bem": "Lapa Verde"},
+      "valor_novo": {"nome_bem": "Lapa Verde", "publicado": true},
+      "criado_em": "2026-04-04T10:00:00Z",
+      "atualizado_em": "2026-04-04T10:00:00Z"
+    }
+  }
+]

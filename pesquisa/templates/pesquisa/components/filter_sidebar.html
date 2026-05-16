@@ -1,0 +1,108 @@
+<aside class="filter-sidebar">
+    <header class="sidebar-header">
+        <h1 class="discovery-title">{{ sidebar_title }}</h1>
+        <p class="registry-eyebrow">{{ sidebar_eyebrow }}</p>
+    </header>
+
+    <form method="get" action="{{ sidebar_action_url }}" data-map-filter-form{% if sidebar_api_url %} data-api-url="{{ sidebar_api_url }}"{% endif %}>
+        <div class="filters-scroll-area">
+            <section class="filter-section">
+                <h2 class="section-heading">Identificação</h2>
+                <div class="field-container full">
+                    <label class="figma-label" for="q">Busca</label>
+                    <div class="search-input-wrapper">
+                        <input id="q" type="text" name="q" placeholder="Nome do sítio ou código IPHAN..." class="figma-input" value="{{ current_filters.q }}">
+                        <span class="search-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="8" cy="8" r="6" stroke="#A8A29E" stroke-width="1.5"/>
+                                <path d="M12.5 12.5L16 16" stroke="#A8A29E" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex-row">
+                    <div class="field-container half">
+                        <label class="figma-label" for="state">Estado (UF)</label>
+                        <input id="state" class="figma-input" type="text" name="state" list="state-options" placeholder="Ex.: PI" value="{{ current_filters.state }}">
+                        <datalist id="state-options">
+                            {% for state in state_options %}
+                                <option value="{{ state }}"></option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div class="field-container half">
+                        <label class="figma-label" for="municipality">Município</label>
+                        <input id="municipality" class="figma-input" type="text" name="municipality" list="municipality-options" placeholder="Ex.: Lençóis" value="{{ current_filters.municipality }}">
+                        <datalist id="municipality-options">
+                            {% for value, label in municipality_options %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                </div>
+            </section>
+
+            <section class="filter-section">
+                <h2 class="section-heading">Conservação</h2>
+                <div class="field-container full">
+                    <label class="figma-label" for="conservation">Estado de conservação</label>
+                    <select id="conservation" class="figma-select" name="conservation">
+                        <option value="">Todos</option>
+                        {% for value, label in conservation_options %}
+                            <option value="{{ value }}" {% if current_filters.conservation == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </section>
+
+            <section class="filter-section">
+                <h2 class="section-heading">Condição legal</h2>
+                <div class="field-container full">
+                    <label class="figma-label" for="legal-level">Nível de homologação</label>
+                    <select id="legal-level" class="figma-select" name="legal_level">
+                        <option value="">Todos</option>
+                        {% for value, label in legal_level_options %}
+                            <option value="{{ value }}" {% if current_filters.legal_level == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </section>
+
+            <section class="filter-section">
+                <h2 class="section-heading">Geográfico</h2>
+                <div class="flex-row">
+                    <div class="field-container half">
+                        <label class="figma-label" for="nature">Natureza</label>
+                        <select id="nature" class="figma-select" name="nature">
+                            <option value="">Todas</option>
+                            {% for value, label in nature_options %}
+                                <option value="{{ value }}" {% if current_filters.nature == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="field-container half">
+                        <label class="figma-label" for="type">Tipo</label>
+                        <select id="type" class="figma-select" name="type">
+                            <option value="">Todos</option>
+                            {% for value, label in type_options %}
+                                <option value="{{ value }}" {% if current_filters.type == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer class="sidebar-footer">
+            <button type="submit" class="btn-search-main">{{ sidebar_primary_label }}</button>
+            {% if sidebar_secondary_url and sidebar_secondary_label %}
+                <a class="subtle-link" href="{{ sidebar_secondary_url }}">{{ sidebar_secondary_label }}</a>
+            {% endif %}
+        </footer>
+    </form>
+
+    <p class="mapa-counter" style="padding: 0 24px 24px; margin: 0;">
+        {{ sidebar_counter_label }}: <strong data-map-count>{{ sidebar_counter_value }}</strong>
+    </p>
+</aside>

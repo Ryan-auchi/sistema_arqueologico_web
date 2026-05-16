@@ -1,0 +1,384 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Logs de Auditoria | Stratigraphy Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+    :root {
+        --figma-brown-dark: #312113;
+        --figma-brown-light: #BA9F8B;
+        --figma-text-muted: #615E5C;
+        --figma-border: rgba(210, 196, 187, 0.2);
+    }
+
+    .shell {
+        padding: 0;
+    }
+
+    .main-content {
+        width: 100%;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 32px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .header-section {
+        margin-bottom: 8px;
+    }
+
+    .eyebrow {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #312113;
+        margin-bottom: 8px;
+    }
+
+    .main-title {
+        font-family: 'Newsreader', serif;
+        font-size: 30px;
+        font-weight: 400;
+        letter-spacing: -1.2px;
+        color: #312113;
+        margin-bottom: 4px;
+    }
+
+    .subtitle {
+        font-size: 14px;
+        color: #4e453e;
+    }
+
+    .action-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 4px;
+        flex-wrap: wrap;
+    }
+
+    .search-container {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .search-input-wrapper {
+        position: relative;
+        width: 256px;
+    }
+
+    .search-input {
+        width: 100%;
+        height: 36px;
+        background: #ffffff;
+        border: none;
+        border-radius: 4px;
+        padding: 10px 16px 11px 36px;
+        font-size: 12px;
+        color: #1c1917;
+    }
+
+    .search-icon-fixed {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 10px;
+        height: 10px;
+        border: 2px solid #80756d;
+        border-radius: 999px;
+    }
+
+    .search-icon-fixed::after {
+        content: "";
+        position: absolute;
+        width: 6px;
+        height: 2px;
+        background: #80756d;
+        right: -6px;
+        bottom: -3px;
+        transform: rotate(45deg);
+    }
+
+    .btn-filter {
+        height: 38px;
+        padding: 10px 16px;
+        background: #e7e8e9;
+        border: 1px solid rgba(210, 196, 187, 0.1);
+        border-radius: 2px;
+        font-weight: 700;
+        font-size: 12px;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+
+    .stats-badges {
+        display: flex;
+        gap: 16px;
+    }
+
+    .badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: rgba(78, 69, 62, 0.6);
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .table-container {
+        background: #FFFFFF;
+        border: 1px solid rgba(210, 196, 187, 0.2);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .audit-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .audit-table thead {
+        background: rgba(243, 244, 245, 0.5);
+        border-bottom: 1px solid rgba(210, 196, 187, 0.1);
+    }
+
+    .audit-table th {
+        padding: 18px 24px;
+        text-align: left;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--figma-brown-dark);
+    }
+
+    .audit-table tbody tr {
+        border-bottom: 1px solid rgba(237, 238, 239, 0.5);
+    }
+
+    .audit-table tbody tr.audit-row {
+        cursor: pointer;
+        transition: background-color 0.18s ease;
+    }
+
+    .audit-table tbody tr.audit-row:hover {
+        background: rgba(241, 239, 237, 0.55);
+    }
+
+    .audit-table td {
+        padding: 16px 24px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+    .log-date {
+        font-size: 14px;
+        color: #191C1D;
+    }
+
+    .log-time {
+        font-size: 12px;
+        color: var(--figma-text-muted);
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 500;
+    }
+
+    .avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 12px;
+        background: #EEE;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #4E453E;
+        object-fit: cover;
+    }
+
+    .op-badge {
+        padding: 2px 8px;
+        border-radius: 2px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        display: inline-block;
+    }
+
+    .op-reconcile { background: #F0E0D4; color: #221A13; }
+    .op-update { background: #493627; color: #BA9F8B; }
+    .op-validate { background: #E1E3E4; border: 1px solid rgba(210, 196, 187, 0.5); color: #4E453E; }
+    .op-delete { background: #FFDAD6; color: #93000A; }
+    .op-create { background: var(--figma-brown-dark); color: #FFF; }
+
+    .target-box {
+        background: #E7E8E9;
+        padding: 4px 8px;
+        border-radius: 2px;
+        font-size: 12px;
+        color: var(--figma-text-muted);
+    }
+
+    .pagination {
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(243, 244, 245, 0.3);
+        border-top: 1px solid rgba(210, 196, 187, 0.1);
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .btn-page {
+        background: #FFF;
+        border: 1px solid rgba(210, 196, 187, 0.2);
+        padding: 4px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #80756D;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    @media (max-width: 1024px) {
+        .main-content {
+            max-width: 100%;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .main-content {
+            padding: 16px;
+        }
+
+        .action-bar {
+            width: 100%;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-input-wrapper {
+            width: 100%;
+        }
+
+        .audit-table {
+            min-width: 920px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="curadoria-layout">
+    {% include "components/sidebar.html" with active_section="audit" %}
+
+    <main class="main-content">
+        <header class="header-section">
+            <p class="eyebrow">Histórico consolidado</p>
+            <h1 class="main-title">Logs de Auditoria</h1>
+            <p class="subtitle">Monitore o histórico completo de operações do sistema, reconciliações de dados e trilhas de integridade para registros arqueológicos.</p>
+        </header>
+
+        <div class="action-bar">
+            <form class="search-container" method="get" action="{% url 'audit-logs' %}">
+                <div class="search-input-wrapper">
+                    <span class="search-icon-fixed" aria-hidden="true"></span>
+                    <input type="text" class="search-input" name="q" value="{{ query }}" placeholder="Buscar por usuário ou ação...">
+                </div>
+                <button class="btn-filter" type="submit">
+                    <div style="width:10.5px; height:7px; background:#191C1D;"></div>
+                    Filtrar
+                </button>
+            </form>
+            <div class="stats-badges">
+                <div class="badge"><span class="dot" style="background:#312113;"></span> {{ total_logs }} Total</div>
+                <div class="badge"><span class="dot" style="background:#BA9F8B;"></span> {{ total_users }} Usuários</div>
+                <div class="badge"><span class="dot" style="background:#16A34A;"></span> {{ sync_status }} Sincronia</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>DATA / HORA</th>
+                        <th>USUÁRIO</th>
+                        <th>OPERAÇÃO</th>
+                        <th>ENTIDADE</th>
+                        <th>VALOR ANTERIOR</th>
+                        <th>VALOR NOVO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in page_obj %}
+                    <tr class="audit-row" data-href="{% url 'audit-detail' item.audit_id %}" onclick="window.location.href=this.dataset.href">
+                        <td>
+                            <div class="log-date">{{ item.created_at|date:"d M Y" }}</div>
+                            <div class="log-time">{{ item.created_at|time:"H:i:s" }}</div>
+                        </td>
+                        <td class="user-cell">
+                            <div class="avatar">{{ item.user_name|slice:":2"|upper }}</div>
+                            {{ item.user_name }}
+                        </td>
+                        <td><span class="op-badge {{ item.operation_class }}">{{ item.operation_label }}</span></td>
+                        <td><span class="target-box">{{ item.target }}</span></td>
+                        <td style="color:#4E453E" title="{{ item.before }}">{{ item.before_preview }}</td>
+                        <td style="font-weight:500" title="{{ item.after }}">{{ item.after_preview }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="padding: 28px 24px; color:#4E453E; text-align:center;">Nenhum log encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="pagination">
+                <span class="pagination-text">
+                    {% if page_obj.paginator.count %}
+                        Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }}
+                    {% else %}
+                        Mostrando 0 resultados
+                    {% endif %}
+                </span>
+                <div class="pagination-btns">
+                    {% if page_obj.has_previous %}
+                        <a class="btn-page" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">Anterior</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a class="btn-page" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">Próxima</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </main>
+</section>
+{% endblock %}

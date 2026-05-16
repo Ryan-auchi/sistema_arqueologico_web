@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Lista | Web Coletum{% endblock %}
+
+{% block extra_head %}
+<style>
+    .pesquisa-full {
+        min-height: calc(100vh - var(--top-nav-height));
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pesquisa-full">
+{% url 'pesquisa-lista' as pesquisa_lista_url %}
+{% url 'pesquisa-mapa' as pesquisa_mapa_url %}
+<section class="hero">
+    <div class="page-actions">
+        <a class="button button-secondary" href="{% url 'pesquisa-mapa' %}">Switch to Map</a>
+        <a class="button button-primary" href="{% url 'home' %}">Voltar ao início</a>
+    </div>
+    <h1>Exploração de resultados</h1>
+    <p class="lead">Visualização em cards, badges e paginação para comparar os sítios sem sobrecarregar o navegador.</p>
+</section>
+
+<section class="research-layout">
+    {% include "pesquisa/components/filter_sidebar.html" with sidebar_title="Refinar listagem" sidebar_eyebrow="Filtros" sidebar_action_url=pesquisa_lista_url sidebar_secondary_url=pesquisa_mapa_url sidebar_secondary_label="Mapa" sidebar_primary_label="Aplicar filtros" sidebar_counter_label="Resultados" sidebar_counter_value=paginator_count current_filters=current_filters state_options=state_options municipality_options=municipality_options conservation_options=conservation_options %}
+
+    <div class="map-panel">
+        <article class="list-summary">
+            <div>
+                <p class="eyebrow">Resultados</p>
+                <h2>Showing {{ page_obj.start_index }} - {{ page_obj.end_index }} of {{ paginator_count }}</h2>
+            </div>
+            <p>Cards com badges por status e acesso direto à ficha técnica.</p>
+        </article>
+
+        <div class="result-grid">
+            {% for site in page_obj %}
+                <article class="site-card">
+                    <span class="badge is-{{ site.conservation }}">{{ site.badge }}</span>
+                    <span class="pill" style="margin-left:8px; {% if site.published %}background:#DCFCE7; color:#166534;{% else %}background:#FEE2E2; color:#991B1B;{% endif %}">
+                        {{ site.published_label }}
+                    </span>
+                    <h3>{{ site.name }}</h3>
+                    <div class="site-meta">
+                        <span class="pill">{{ site.state }}</span>
+                        <span class="pill">{{ site.municipality }}</span>
+                        <span class="pill">{{ site.period }}</span>
+                    </div>
+                    <p>{{ site.summary }}</p>
+                    <a class="subtle-link" href="{% url 'pesquisa-detalhe' sitio_id=site.id %}">Abrir ficha técnica</a>
+                </article>
+            {% empty %}
+                <article class="site-card">
+                    <h3>Nenhum resultado</h3>
+                    <p>Não há sítios para os filtros selecionados.</p>
+                </article>
+            {% endfor %}
+        </div>
+
+        <nav class="pagination" aria-label="Paginação">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">First</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">Prev</a>
+            {% endif %}
+
+            {% for number in page_obj.paginator.page_range %}
+                {% if number == page_obj.number %}
+                    <span class="current">{{ number }}</span>
+                {% else %}
+                    <a href="?page={{ number }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">{{ number }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">Next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">Last</a>
+            {% endif %}
+        </nav>
+    </div>
+</section>
+</div>
+{% endblock %}

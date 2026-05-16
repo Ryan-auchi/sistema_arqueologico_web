@@ -1,0 +1,375 @@
+﻿{% extends "base.html" %}
+{% load static l10n %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Newsreader:wght@600;700&display=swap" rel="stylesheet">
+
+<style>
+    :root {
+        --figma-bg: #F8F9FA;
+        --figma-brown-dark: #312113;
+        --figma-brown-light: #BA9F8B;
+        --figma-text-main: #1C1917;
+        --figma-text-muted: #80756D;
+        --figma-border: rgba(210, 196, 187, 0.3);
+    }
+
+    body { background: var(--figma-bg); font-family: 'Inter', sans-serif; margin: 0; }
+
+    .hero-section {
+        position: relative; height: 480px; width: 100%;
+        background: url('{{ hero_image_url|default:"/static/images/default.png" }}') center/cover;
+    }
+    .hero-gradient {
+        position: absolute; inset: 0;
+        background: linear-gradient(0deg, rgba(49, 33, 19, 0.9) 0%, rgba(49, 33, 19, 0.3) 50%, rgba(49, 33, 19, 0) 100%);
+    }
+    .hero-container {
+        position: relative; z-index: 2; padding: 0 32px 40px;
+        max-width: 1280px; margin: 0 auto; height: 100%;
+        display: flex; flex-direction: column; justify-content: flex-end;
+    }
+
+    .hero-title {
+        font-family: 'Liberation Serif', serif; font-size: 60px; color: #FFF; margin: 8px 0;
+    }
+
+    .page-content {
+        max-width: 1280px; margin: 0 auto; padding: 48px 32px;
+        display: grid; grid-template-columns: 1fr 478px; gap: 64px;
+    }
+
+    .section-title-figma {
+        font-family: 'Liberation Serif', serif; font-size: 30px; color: var(--figma-brown-dark);
+        margin-bottom: 24px; border-bottom: 1px solid rgba(210, 196, 187, 0.2); padding-bottom: 16px;
+    }
+
+    .info-label {
+        font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--figma-text-muted);
+    }
+    .info-value { font-size: 16px; font-weight: 500; color: var(--figma-brown-dark); margin-top: 4px; }
+
+    .gray-box { background: #F3F4F5; border-radius: 4px; padding: 32px; margin-bottom: 40px; }
+    .status-card { background: #EDEEEF; border-radius: 8px; padding: 24px; }
+    .tag-figma { background: #E1E3E4; padding: 4px 8px; font-size: 10px; font-weight: 700; color: #4E453E; text-transform: uppercase; }
+
+    .publish-toggle-panel {
+        margin-top: 16px;
+        background: #FFFFFF;
+        border: 1px solid rgba(49, 33, 19, 0.15);
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .publish-toggle-panel label {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #312113;
+    }
+
+    .publish-chip {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .publish-chip.is-published {
+        background: #DCFCE7;
+        color: #166534;
+    }
+
+    .publish-chip.is-unpublished {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    /* Estilo para seção IPHAN */
+    .iphan-box { background: #EDEEEF; border-radius: 8px; padding: 32px; }
+    .iphan-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+
+    /* Media Grid */
+    .media-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-top: 24px; }
+    .media-item { border-radius: 4px; overflow: hidden; height: 240px; }
+    .media-item img { width: 100%; height: 100%; object-fit: cover; }
+    .media-main { grid-row: span 2; height: 496px; }
+
+    .footer-meta {
+        background: #EDEEEF; padding: 48px 32px; margin-top: 64px;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+</style>
+
+<div class="hero-section">
+    <div class="hero-gradient"></div>
+    <div class="hero-container">
+        <div style="background: var(--figma-brown-light); padding: 4px 12px; border-radius: 2px; display: inline-block;">
+            <span class="info-label" style="color: var(--figma-brown-dark);">{{ sitio.natureza }}</span>
+        </div>
+        <h1 class="hero-title">{{ sitio.nome_bem }}</h1>
+        <div style="font-family: 'Liberation Mono'; color: #FFF; opacity: 0.9;">
+            {{ sitio.codigo_iphan|default:"Código não informado" }} | {{ sitio.uf|default:"UF" }} | {{ sitio.municipio|default:"Município não informado" }}
+        </div>
+    </div>
+</div>
+
+<div class="page-content">
+    <main>
+        <section>
+            <h2 class="section-title-figma">Descrição e atualização</h2>
+            <p style="font-family: 'Liberation Serif'; font-size: 18px; line-height: 29px; color: #4E453E;">
+                {{ sitio.descricao_atualizacao|default:"Sem descrição atualizada cadastrada." }}
+            </p>
+
+            <div class="gray-box" style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
+                <div>
+                    <h4 class="info-label" style="font-family: 'Newsreader'; font-size: 14px; margin-bottom:16px;">Identificação Básica</h4>
+                    <div style="margin-bottom:16px;">
+                        <span class="info-label">Tipo</span>
+                        <div class="info-value">{{ sitio.tipo }}</div>
+                    </div>
+                    <div>
+                        <span class="info-label">Ano de registro</span>
+                        <div class="info-value">{{ sitio.ano_registro|default:"Não informado" }}</div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="info-label" style="font-family: 'Newsreader'; font-size: 14px; margin-bottom:16px;">Atributos Adicionais</h4>
+                    <span class="info-label">Nomes Populares</span>
+                    <div class="info-value">{{ sitio.nomes_populares }}</div>
+                    <span class="info-label" style="display:block; margin-top:16px;">Artefatos</span>
+                    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap: wrap;">
+                        {% for word in sitio.artefatos %}
+                            <span class="tag-figma">{{ word }}</span>
+                        {% empty %}
+                            <span class="info-value" style="margin-top:0;">Não informado</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <section style="margin-top: 48px;">
+                <h3 class="section-title-figma" style="font-size: 20px;">Dados do registro</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div>
+                        <span class="info-label">Meios de acesso</span>
+                        <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.meios_acesso|default:"Não informado" }}</p>
+                    </div>
+                    <div>
+                        <span class="info-label">Coleta vinculada</span>
+                        <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.coleta_id|default:"Não vinculada" }}</p>
+                    </div>
+                    <div>
+                        <span class="info-label">Criado em</span>
+                        <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.criado_em|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <div>
+                        <span class="info-label">Atualizado em</span>
+                        <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.atualizado_em|date:"d/m/Y H:i" }}</p>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <aside>
+        <div style="background: #E1E3E4; border-radius: 8px; overflow: hidden;">
+            <div id="map" style="height: 256px;"></div>
+            <div style="padding: 24px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
+                    <div>
+                        <span class="info-label">Latitude</span>
+                        <div style="font-family: 'Liberation Mono';">{{ sitio.latitude }}</div>
+                    </div>
+                    <div>
+                        <span class="info-label">Longitude</span>
+                        <div style="font-family: 'Liberation Mono';">{{ sitio.longitude }}</div>
+                    </div>
+                </div>
+                <div style="border-top: 1px solid rgba(210,196,187,0.3); padding-top: 16px;">
+                    <span class="info-label">Endereço Rural</span>
+                    <div class="info-value" style="font-weight: 400; font-size: 14px;">{{ sitio.endereco }}</div>
+                    <div style="margin-top: 16px; display: flex; gap: 24px;">
+                        <div><span class="info-label">CEP</span><div class="info-value" style="font-size:14px;">{{ sitio.cep }}</div></div>
+                        <div><span class="info-label">Município</span><div class="info-value" style="font-size:14px;">{{ sitio.municipio }}</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="status-card">
+                <div style="font-family: 'Liberation Serif'; font-size: 30px;">8.5k</div>
+                <span class="info-label">Artefatos Coletados</span>
+            </div>
+            <div class="status-card" style="background: var(--figma-brown-dark); color: white;">
+                <div style="font-family: 'Liberation Serif'; font-size: 30px;">Lítico</div>
+                <span class="info-label" style="color: rgba(255,255,255,0.7);">Indústria</span>
+            </div>
+        </div>
+
+        <form method="post" class="publish-toggle-panel">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="toggle_publicado">
+            <input type="hidden" name="published_selected" id="published-selected-input" value="{% if sitio.publicado %}1{% else %}0{% endif %}">
+            <label for="published-checkbox-detail">
+                <input type="checkbox" id="published-checkbox-detail" {% if sitio.publicado %}checked{% endif %}>
+                Publicado no mapa e na lista
+            </label>
+            <div id="publish-chip" class="publish-chip {% if sitio.publicado %}is-published{% else %}is-unpublished{% endif %}">
+                {% if sitio.publicado %}Publicado{% else %}Não publicado{% endif %}
+            </div>
+            <div style="margin-top: 12px;">
+                <button type="submit" style="background:#312113; color:#FFF; border:none; border-radius:4px; padding:10px 14px; font-weight:700; cursor:pointer;">Salvar publicação</button>
+            </div>
+        </form>
+    </aside>
+
+
+<div style="max-width: 1280px; margin: 48px auto; padding: 0 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; border-top: 1px solid var(--figma-border); padding-top: 32px;">
+        <div>
+            <h2 style="font-family: 'Liberation Serif'; font-size: 30px; color: var(--figma-brown-dark); margin:0;">Mídias do Bem</h2>
+            <p class="info-label" style="font-weight:400; text-transform: none; margin-top:8px;">Registros visuais e documentação in-situ.</p>
+        </div>
+        <a href="#" style="background: var(--figma-brown-dark); color: white; padding: 8px 24px; text-decoration: none; font-weight: 700; font-size: 14px; border-radius: 2px;">VER TUDO</a>
+    </div>
+
+    <div class="media-grid">
+        {% for img in sitio.midias.all %}
+            <div class="media-item {% if forloop.first %}media-main{% endif %}">
+                <img src="{{ img.url }}" alt="{{ img.descricao }}">
+            </div>
+        {% empty %}
+            <p class="info-label" style="grid-column: span 3; text-align: center; padding: 40px;">Nenhuma imagem cadastrada.</p>
+        {% endfor %}
+    </div>
+</div>
+
+{% if audit_entries %}
+<div style="max-width: 1280px; margin: 48px auto; padding: 0 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; border-top: 1px solid var(--figma-border); padding-top: 32px;">
+        <div>
+            <h2 style="font-family: 'Liberation Serif'; font-size: 30px; color: var(--figma-brown-dark); margin:0;">Histórico de Auditoria</h2>
+            <p class="info-label" style="font-weight:400; text-transform: none; margin-top:8px;">Últimas alterações e operações realizadas neste registro.</p>
+        </div>
+        <a href="{% url 'audit-logs' %}" style="background: var(--figma-brown-dark); color: white; padding: 8px 24px; text-decoration: none; font-weight: 700; font-size: 14px; border-radius: 2px;">VER TUDO</a>
+    </div>
+
+    <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 24px;">
+        <thead>
+            <tr>
+                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Usuário</th>
+                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Operação</th>
+                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Valor Anterior</th>
+                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Novo Valor</th>
+                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Data</th>
+                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Ação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in audit_entries %}
+                <tr style="background: #FFFFFF; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); border-radius: 4px; transition: background-color 0.2s ease;">
+                    <td style="font-weight:600; border-left: 2px solid #16A34A; border-radius: 4px 0 0 4px; padding: 16px;">{{ entry.usuario.nome|default:"Sistema" }}</td>
+                    <td style="color: var(--figma-text-muted); padding: 16px;">{{ entry.operacao|default:"-"|upper }}</td>
+                    <td style="color: var(--figma-text-muted); padding: 16px; font-size: 12px;">
+                        {% if entry.valor_anterior %}
+                            <span style="font-family: 'Liberation Mono';">{{ entry.valor_anterior|truncatewords:5 }}</span>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--figma-text-muted); padding: 16px; font-size: 12px;">
+                        {% if entry.valor_novo %}
+                            <span style="font-family: 'Liberation Mono';">{{ entry.valor_novo|truncatewords:5 }}</span>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td style="font-family:'Liberation Mono'; padding: 16px;">{{ entry.data_hora|date:"d M Y" }}</td>
+                    <td style="padding: 16px;">
+                        <a href="{% url 'audit-detail' entry.id %}" style="background: transparent; color: var(--figma-brown-dark); text-decoration: none; font-weight: 700; font-size: 12px; border-bottom: 1px solid var(--figma-brown-dark); cursor: pointer;">Ver detalhes</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<footer class="footer-meta">
+    <div>
+        <span class="info-label">Status do Registro</span>
+        <div style="font-family: 'Liberation Serif'; font-weight: 700; font-size: 18px; color: var(--figma-brown-dark);">
+            {% if sitio.publicado %}APROVADO PARA ACESSO PÚBLICO{% else %}EM ANÁLISE TÉCNICA{% endif %}
+        </div>
+    </div>
+    <div style="text-align: right;">
+        <span class="info-label">Última Atualização</span>
+        <div class="info-value" style="font-size: 14px;">{{ sitio.atualizado_em|date:"d M Y" }}</div>
+    </div>
+</footer>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    (function () {
+        const checkbox = document.getElementById('published-checkbox-detail');
+        const hiddenInput = document.getElementById('published-selected-input');
+        const chip = document.getElementById('publish-chip');
+
+        if (!checkbox || !hiddenInput || !chip) {
+            return;
+        }
+
+        checkbox.addEventListener('change', function () {
+            const isPublished = checkbox.checked;
+            hiddenInput.value = isPublished ? '1' : '0';
+            chip.classList.toggle('is-published', isPublished);
+            chip.classList.toggle('is-unpublished', !isPublished);
+            chip.textContent = isPublished ? 'Publicado' : 'Não publicado';
+        });
+    })();
+
+    var lat = {{ sitio.latitude|default:"null"|unlocalize }};
+    var lng = {{ sitio.longitude|default:"null"|unlocalize }};
+    var geometryRaw = '{{ site_geometry_geojson|default:""|escapejs }}';
+    var geometry = null;
+    if (geometryRaw) {
+        try {
+            geometry = JSON.parse(geometryRaw);
+        } catch (e) {
+            geometry = null;
+        }
+    }
+
+    var hasPoint = lat !== null && lng !== null;
+    var map = L.map('map', {zoomControl: false}).setView(hasPoint ? [lat, lng] : [-14.235, -51.925], hasPoint ? 14 : 4);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+
+    if (geometry && (geometry.type === 'Polygon' || geometry.type === 'MultiPolygon')) {
+        var polygonLayer = L.geoJSON(geometry, {
+            style: {
+                color: '#14532D',
+                fillColor: '#22C55E',
+                fillOpacity: 0.18,
+                weight: 2,
+            },
+        }).addTo(map);
+
+        var polygonBounds = polygonLayer.getBounds();
+        if (polygonBounds.isValid()) {
+            map.fitBounds(polygonBounds, { padding: [20, 20] });
+        }
+    } else if (hasPoint) {
+        L.marker([lat, lng]).addTo(map);
+    }
+</script>
+{% endblock %}

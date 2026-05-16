@@ -1,0 +1,150 @@
+{% comment %}
+Componente de Tabela de Comparação de Auditoria.
+
+Esperados:
+- comparisons: Lista de dicionários com campos: field_name, label, old_value, new_value, changed
+- title (opcional): Título da seção de comparação
+- show_empty (opcional): Se True, mostra um aviso quando não há comparações
+{% endcomment %}
+
+<div class="audit-comparison-container">
+    {% if title %}
+        <h3 class="comparison-title">{{ title }}</h3>
+    {% endif %}
+
+    {% if comparisons %}
+        <div class="comparison-table">
+            <div class="table-header">
+                <span class="label-caps">Campo</span>
+                <span class="label-caps">Valor Anterior</span>
+                <span class="label-caps">Novo Valor</span>
+            </div>
+
+            {% for comparison in comparisons %}
+                <div class="row">
+                    <div class="field-label">{{ comparison.label }}</div>
+                    
+                    <div class="value-box {% if comparison.old_value %}old-value{% else %}empty-value{% endif %}">
+                        {% if comparison.old_value %}
+                            {{ comparison.old_value|truncatewords:20 }}
+                        {% else %}
+                            <em>Não informado</em>
+                        {% endif %}
+                    </div>
+
+                    <div class="value-box {% if comparison.new_value %}new-value{% else %}empty-value{% endif %}">
+                        {% if comparison.new_value %}
+                            {{ comparison.new_value|truncatewords:20 }}
+                        {% else %}
+                            <em>Não informado</em>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% elif show_empty %}
+        <div class="comparison-table">
+            <div class="no-comparisons">
+                <p>Nenhuma comparação de campos disponível.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .audit-comparison-container {
+        margin-top: 32px;
+    }
+
+    .comparison-title {
+        font-family: 'Newsreader', serif;
+        font-size: 24px;
+        color: #312113;
+        margin-bottom: 24px;
+    }
+
+    .comparison-table {
+        background: #FFFFFF;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .table-header {
+        display: grid;
+        grid-template-columns: 216px 288px 1fr;
+        background: #EDEEEF;
+        padding: 16px 32px;
+        gap: 32px;
+    }
+
+    .row {
+        display: grid;
+        grid-template-columns: 216px 288px 1fr;
+        padding: 24px 32px;
+        border-bottom: 1px solid #E5E5E5;
+        align-items: start;
+        gap: 32px;
+    }
+
+    .row:last-child {
+        border-bottom: none;
+    }
+
+    .field-label {
+        font-weight: 700;
+        font-size: 14px;
+        color: #312113;
+    }
+
+    .label-caps {
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: #80756D;
+    }
+
+    .value-box {
+        padding: 8px 12px;
+        border-radius: 2px;
+        font-size: 14px;
+        line-height: 1.6;
+        word-break: break-word;
+        white-space: pre-wrap;
+    }
+
+    .old-value {
+        background: rgba(255, 218, 214, 0.2);
+        color: #93000A;
+        text-decoration: line-through;
+    }
+
+    .new-value {
+        background: rgba(175, 161, 150, 0.1);
+        border-left: 2px solid #312113;
+        color: #312113;
+        font-weight: 600;
+    }
+
+    .empty-value {
+        color: #615E5C;
+    }
+
+    .no-comparisons {
+        text-align: center;
+        padding: 48px 32px;
+        color: #615E5C;
+    }
+
+    @media (max-width: 960px) {
+        .table-header,
+        .row {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+    }
+</style>

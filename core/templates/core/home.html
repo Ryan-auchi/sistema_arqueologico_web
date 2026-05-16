@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio | Web Coletum{% endblock %}
+
+{% block content %}
+<section class="hero hero-home">
+    <div class="hero-copy">
+        <p class="eyebrow">Funil de informação</p>
+        <h1>Pesquisa arqueológica em mapa, lista e ficha técnica.</h1>
+        <p class="lead">Esqueleto inicial para localizar sítios, filtrar resultados e aprofundar a análise sem perder o contexto espacial.</p>
+        <div class="cta-row">
+            <a class="button button-primary" href="{% url 'pesquisa-mapa' %}">Abrir mapa</a>
+            <a class="button button-secondary" href="{% url 'pesquisa-lista' %}">Ver listagem</a>
+        </div>
+    </div>
+
+    <div class="hero-stats">
+        <article>
+            <strong>{{ site_count }}</strong>
+            <span>sítios simulados</span>
+        </article>
+        <article>
+            <strong>{{ state_count }}</strong>
+            <span>estados cobertos</span>
+        </article>
+        <article>
+            <strong>3</strong>
+            <span>camadas do funil</span>
+        </article>
+    </div>
+</section>
+
+<section class="feature-grid">
+    <article class="feature-card">
+        <p class="eyebrow">1. Mapa</p>
+        <h2>Busca espacial</h2>
+        <p>Base para Google Maps, marcadores dinâmicos e atualização por filtros via AJAX/Fetch.</p>
+    </article>
+    <article class="feature-card">
+        <p class="eyebrow">2. Lista</p>
+        <h2>Exploração de resultados</h2>
+        <p>Cards, badges, paginação e alternância rápida entre visualização em mapa e tabela visual.</p>
+    </article>
+    <article class="feature-card">
+        <p class="eyebrow">3. Detalhe</p>
+        <h2>Ficha técnica</h2>
+        <p>Dashboard com síntese, histórico, proteção legal, mini-mapa e galeria de documentação.</p>
+    </article>
+</section>
+{% endblock %}
