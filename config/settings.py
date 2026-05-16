@@ -26,6 +26,7 @@ AUTH_USER_MODEL = "pesquisa.Usuario"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "core.middleware.ApiAuthTokenMiddleware",
     "django.middleware.common.CommonMiddleware",
