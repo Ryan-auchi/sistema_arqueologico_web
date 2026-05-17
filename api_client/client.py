@@ -410,32 +410,9 @@ def fetch_auditorias_for_bem(bem_id: str, *, entidade_tipo: str) -> list[dict[st
     return entries
 
 
-def update_bem_material(bem_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    response = _request("PUT", f"/mobile/bens-materiais/{bem_id}", json_body=payload)
+def toggle_publicado_bem_material(bem_id: str, publicado: bool) -> dict[str, Any]:
+    response = _request("PATCH", f"/admin/bens-materiais/{bem_id}/publicar", json_body={"publicado": publicado})
     data = response.get("data") if isinstance(response, dict) and isinstance(response.get("data"), dict) else response
     if not isinstance(data, dict):
-        raise ApiError("API response for bem material update was not an object")
+        raise ApiError("API response for bem material publicar was not an object")
     return normalize_bem_material(data)
-
-
-def serialize_bem_material_for_update(site: dict[str, Any], *, publicado: bool | None = None) -> dict[str, Any]:
-    return {
-        "coleta_id": site.get("coleta_id") or None,
-        "codigo_iphan": site.get("codigo_iphan") or None,
-        "nome_bem": site.get("nome_bem") or "",
-        "nomes_populares": site.get("nomes_populares") or None,
-        "natureza": site.get("natureza") or None,
-        "tipo": site.get("tipo") or None,
-        "meios_acesso": site.get("meios_acesso") or None,
-        "artefatos": list(site.get("artefatos") or []),
-        "publicado": site.get("publicado") if publicado is None else publicado,
-        "uf": site.get("uf") or None,
-        "municipio": site.get("municipio") or None,
-        "cep": site.get("cep") or None,
-        "endereco": site.get("endereco") or None,
-        "latitude": site.get("latitude"),
-        "longitude": site.get("longitude"),
-        "geojson": _ensure_json_text(site.get("geojson")),
-        "ano_registro": site.get("ano_registro"),
-        "descricao_atualizacao": site.get("descricao_atualizacao") or None,
-    }

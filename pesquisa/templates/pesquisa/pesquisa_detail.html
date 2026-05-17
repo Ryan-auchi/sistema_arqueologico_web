@@ -120,6 +120,7 @@
             </div>
         </div>
 
+        {% if request.user.perfil in "admin,curador" or request.user.is_superuser %}
         <form method="post" class="publish-toggle-panel">
             {% csrf_token %}
             <input type="hidden" name="action" value="toggle_publicado">
@@ -135,6 +136,7 @@
                 <button type="submit" style="background:#312113; color:#FFF; border:none; border-radius:4px; padding:10px 14px; font-weight:700; cursor:pointer;">Salvar publicação</button>
             </div>
         </form>
+        {% endif %}
     </aside>
 </div>{# /page-content #}
 

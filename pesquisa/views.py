@@ -11,9 +11,9 @@ from api_client.client import (
     fetch_all_bens_materiais,
     fetch_auditorias_for_bem,
     fetch_bem_material,
+    invalidate_bens_cache,
     normalize_bem_material,
-    serialize_bem_material_for_update,
-    update_bem_material,
+    toggle_publicado_bem_material,
 )
 
 ENTITY_TYPE_BEM_MATERIAL = "App\\Models\\BemMaterial"
@@ -279,9 +279,9 @@ def site_detail(request, sitio_id):
     if request.method == "POST" and request.POST.get("action") == "toggle_publicado":
         publish_selected = request.POST.get("published_selected") == "1"
         try:
-            payload = serialize_bem_material_for_update(current_site.raw, publicado=publish_selected)
-            updated_site = update_bem_material(sitio_id, payload)
+            updated_site = toggle_publicado_bem_material(sitio_id, publish_selected)
             current_site = _site_payload(updated_site)
+            invalidate_bens_cache()
         except ApiError:
             raise Http404("Não foi possível atualizar o sítio")
 
