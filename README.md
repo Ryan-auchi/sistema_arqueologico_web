@@ -26,7 +26,7 @@ Oferece duas frentes de uso:
 ## Módulos
 
 ### Pesquisa
-Mapa e listagem dos sítios publicados. Permite consulta por localização, tipo e natureza do bem. Os dados são consumidos em tempo real da API com cache local de 60 segundos.
+Mapa e listagem dos sítios publicados. Permite consulta por localização, tipo e natureza do bem. Os dados são consumidos em tempo real da API com cache local de 60 segundos. O controle de publicação na tela de detalhe do sítio (visível apenas para curador e admin) atualiza o registro via `PATCH /admin/bens-materiais/{id}/publicar`, registra auditoria e invalida o cache imediatamente.
 
 ### Curadoria
 Fluxo de revisão técnica para curadores e administradores:
