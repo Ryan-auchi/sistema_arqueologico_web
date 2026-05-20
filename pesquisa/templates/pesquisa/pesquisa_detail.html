@@ -20,145 +20,166 @@
     </div>
 </div>
 
-<div class="page-content">
-    <main>
-        <section>
-            <h2 class="section-title-figma">Descrição e atualização</h2>
-            <p style="font-family: 'Liberation Serif'; font-size: 18px; line-height: 29px; color: #4E453E;">
-                {{ sitio.descricao_atualizacao|default:"Sem descrição atualizada cadastrada." }}
-            </p>
+<!-- Abas de detalhe posicionadas abaixo da hero (estilo igual ao header) -->
+<div style="max-width:1280px; margin: 0 auto; padding: 0 32px;">
+    <nav class="nav-links detail-nav" aria-label="Detalhes do bem" style="margin-top: 16px;">
+        <a href="#" class="nav-link active tab-btn" data-target="tab-detalhes">Detalhes</a>
+        <a href="#" class="nav-link tab-btn" data-target="tab-colaboradores">Colaboradores</a>
+        <a href="#" class="nav-link tab-btn" data-target="tab-artigos">Artigos</a>
+    </nav>
 
-            <div class="gray-box" style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
-                <div>
-                    <h4 class="info-label" style="font-family: 'Newsreader'; font-size: 14px; margin-bottom:16px;">Identificação Básica</h4>
-                    <div style="margin-bottom:16px;">
-                        <span class="info-label">Tipo</span>
-                        <div class="info-value">{{ sitio.tipo }}</div>
+    <div class="tab-panels" style="margin-top:20px;">
+        <div id="tab-detalhes" class="tab-panel active">
+            <div class="page-content">
+                <main>
+                    <section>
+                        <h2 class="section-title-figma">Descrição e atualização</h2>
+                        <p style="font-family: 'Liberation Serif'; font-size: 18px; line-height: 29px; color: #4E453E;">
+                            {{ sitio.descricao_atualizacao|default:"Sem descrição atualizada cadastrada." }}
+                        </p>
+
+                        <div class="gray-box" style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
+                            <div>
+                                <h4 class="info-label" style="font-family: 'Newsreader'; font-size: 14px; margin-bottom:16px;">Identificação Básica</h4>
+                                <div style="margin-bottom:16px;">
+                                    <span class="info-label">Tipo</span>
+                                    <div class="info-value">{{ sitio.tipo }}</div>
+                                </div>
+                                <div>
+                                    <span class="info-label">Ano de registro</span>
+                                    <div class="info-value">{{ sitio.ano_registro|default:"Não informado" }}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="info-label" style="font-family: 'Newsreader'; font-size: 14px; margin-bottom:16px;">Atributos Adicionais</h4>
+                                <span class="info-label">Nomes Populares</span>
+                                <div class="info-value">{{ sitio.nomes_populares }}</div>
+                                <span class="info-label" style="display:block; margin-top:16px;">Artefatos</span>
+                                <div style="display:flex; gap:8px; margin-top:8px; flex-wrap: wrap;">
+                                    {% for word in sitio.artefatos %}
+                                        <span class="tag-figma">{{ word }}</span>
+                                    {% empty %}
+                                        <span class="info-value" style="margin-top:0;">Não informado</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <section style="margin-top: 48px;">
+                            <h3 class="section-title-figma" style="font-size: 20px;">Dados do registro</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                                <div>
+                                    <span class="info-label">Meios de acesso</span>
+                                    <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.meios_acesso|default:"Não informado" }}</p>
+                                </div>
+                                <div>
+                                    <span class="info-label">Coleta vinculada</span>
+                                    <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.coleta_id|default:"Não vinculada" }}</p>
+                                </div>
+                                <div>
+                                    <span class="info-label">Criado em</span>
+                                    <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.criado_em|date:"d/m/Y H:i" }}</p>
+                                </div>
+                                <div>
+                                    <span class="info-label">Atualizado em</span>
+                                    <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.atualizado_em|date:"d/m/Y H:i" }}</p>
+                                </div>
+                            </div>
+                        </section>
+                    </section>
+                </main>
+
+                <aside>
+                    <div style="background: #E1E3E4; border-radius: 8px; overflow: hidden;">
+                        <div id="map"
+                             style="height: 256px;"
+                             data-lat="{{ sitio.latitude|default:'null'|unlocalize }}"
+                             data-lng="{{ sitio.longitude|default:'null'|unlocalize }}"
+                             data-geometry="{{ site_geometry_geojson|default:''|escapejs }}">
+                        </div>
+                        <div style="padding: 24px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
+                                <div>
+                                    <span class="info-label">Latitude</span>
+                                    <div style="font-family: 'Liberation Mono';">{{ sitio.latitude }}</div>
+                                </div>
+                                <div>
+                                    <span class="info-label">Longitude</span>
+                                    <div style="font-family: 'Liberation Mono';">{{ sitio.longitude }}</div>
+                                </div>
+                            </div>
+                            <div style="border-top: 1px solid rgba(210,196,187,0.3); padding-top: 16px;">
+                                <span class="info-label">Endereço Rural</span>
+                                <div class="info-value" style="font-weight: 400; font-size: 14px;">{{ sitio.endereco }}</div>
+                                <div style="margin-top: 16px; display: flex; gap: 24px;">
+                                    <div><span class="info-label">CEP</span><div class="info-value" style="font-size:14px;">{{ sitio.cep }}</div></div>
+                                    <div><span class="info-label">Município</span><div class="info-value" style="font-size:14px;">{{ sitio.municipio }}</div></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <span class="info-label">Ano de registro</span>
-                        <div class="info-value">{{ sitio.ano_registro|default:"Não informado" }}</div>
+
+                    <div style="margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="status-card">
+                            <div style="font-family: 'Liberation Serif'; font-size: 30px;">8.5k</div>
+                            <span class="info-label">Artefatos Coletados</span>
+                        </div>
+                        <div class="status-card" style="background: var(--figma-brown-dark); color: white;">
+                            <div style="font-family: 'Liberation Serif'; font-size: 30px;">Lítico</div>
+                            <span class="info-label" style="color: rgba(255,255,255,0.7);">Indústria</span>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <h4 class="info-label" style="font-family: 'Newsreader'; font-size: 14px; margin-bottom:16px;">Atributos Adicionais</h4>
-                    <span class="info-label">Nomes Populares</span>
-                    <div class="info-value">{{ sitio.nomes_populares }}</div>
-                    <span class="info-label" style="display:block; margin-top:16px;">Artefatos</span>
-                    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap: wrap;">
-                        {% for word in sitio.artefatos %}
-                            <span class="tag-figma">{{ word }}</span>
-                        {% empty %}
-                            <span class="info-value" style="margin-top:0;">Não informado</span>
-                        {% endfor %}
-                    </div>
-                </div>
+
+                    {% if request.user.perfil in "admin,curador" or request.user.is_superuser %}
+                    <form method="post" class="publish-toggle-panel">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle_publicado">
+                        <input type="hidden" name="published_selected" id="published-selected-input" value="{% if sitio.publicado %}1{% else %}0{% endif %}">
+                        <label for="published-checkbox-detail">
+                            <input type="checkbox" id="published-checkbox-detail" {% if sitio.publicado %}checked{% endif %}>
+                            Publicado no mapa e na lista
+                        </label>
+                        <div id="publish-chip" class="publish-chip {% if sitio.publicado %}is-published{% else %}is-unpublished{% endif %}">
+                            {% if sitio.publicado %}Publicado{% else %}Não publicado{% endif %}
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <button type="submit" style="background:#312113; color:#FFF; border:none; border-radius:4px; padding:10px 14px; font-weight:700; cursor:pointer;">Salvar publicação</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </aside>
+                <!-- Mídias do Bem (exibido abaixo do conteúdo principal dentro de Detalhes) -->
+                
             </div>
-
-            <section style="margin-top: 48px;">
-                <h3 class="section-title-figma" style="font-size: 20px;">Dados do registro</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div style="max-width: 1280px; margin: 48px auto; padding: 0 32px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; border-top: 1px solid var(--figma-border); padding-top: 32px;">
                     <div>
-                        <span class="info-label">Meios de acesso</span>
-                        <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.meios_acesso|default:"Não informado" }}</p>
+                        <h2 style="font-family: 'Liberation Serif'; font-size: 30px; color: var(--figma-brown-dark); margin:0;">Mídias do Bem</h2>
+                        <p class="info-label" style="font-weight:400; text-transform: none; margin-top:8px;">Registros visuais e documentação in-situ.</p>
                     </div>
-                    <div>
-                        <span class="info-label">Coleta vinculada</span>
-                        <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.coleta_id|default:"Não vinculada" }}</p>
-                    </div>
-                    <div>
-                        <span class="info-label">Criado em</span>
-                        <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.criado_em|date:"d/m/Y H:i" }}</p>
-                    </div>
-                    <div>
-                        <span class="info-label">Atualizado em</span>
-                        <p style="color: #4E453E; font-size: 14px; margin-top: 4px;">{{ sitio.atualizado_em|date:"d/m/Y H:i" }}</p>
-                    </div>
+                    <a href="#" style="background: var(--figma-brown-dark); color: white; padding: 8px 24px; text-decoration: none; font-weight: 700; font-size: 14px; border-radius: 2px;">VER TUDO</a>
                 </div>
-            </section>
-        </section>
-    </main>
 
-    <aside>
-        <div style="background: #E1E3E4; border-radius: 8px; overflow: hidden;">
-            <div id="map"
-                 style="height: 256px;"
-                 data-lat="{{ sitio.latitude|default:'null'|unlocalize }}"
-                 data-lng="{{ sitio.longitude|default:'null'|unlocalize }}"
-                 data-geometry="{{ site_geometry_geojson|default:''|escapejs }}">
-            </div>
-            <div style="padding: 24px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
-                    <div>
-                        <span class="info-label">Latitude</span>
-                        <div style="font-family: 'Liberation Mono';">{{ sitio.latitude }}</div>
-                    </div>
-                    <div>
-                        <span class="info-label">Longitude</span>
-                        <div style="font-family: 'Liberation Mono';">{{ sitio.longitude }}</div>
-                    </div>
-                </div>
-                <div style="border-top: 1px solid rgba(210,196,187,0.3); padding-top: 16px;">
-                    <span class="info-label">Endereço Rural</span>
-                    <div class="info-value" style="font-weight: 400; font-size: 14px;">{{ sitio.endereco }}</div>
-                    <div style="margin-top: 16px; display: flex; gap: 24px;">
-                        <div><span class="info-label">CEP</span><div class="info-value" style="font-size:14px;">{{ sitio.cep }}</div></div>
-                        <div><span class="info-label">Município</span><div class="info-value" style="font-size:14px;">{{ sitio.municipio }}</div></div>
-                    </div>
+                <div class="media-grid">
+                    {% for img in sitio.midias.all %}
+                        <div class="media-item {% if forloop.first %}media-main{% endif %}">
+                            <img src="{{ img.url }}" alt="{{ img.descricao }}">
+                        </div>
+                    {% empty %}
+                        <p class="info-label" style="grid-column: span 3; text-align: center; padding: 40px;">Nenhuma imagem cadastrada.</p>
+                    {% endfor %}
                 </div>
             </div>
         </div>
-
-        <div style="margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="status-card">
-                <div style="font-family: 'Liberation Serif'; font-size: 30px;">8.5k</div>
-                <span class="info-label">Artefatos Coletados</span>
-            </div>
-            <div class="status-card" style="background: var(--figma-brown-dark); color: white;">
-                <div style="font-family: 'Liberation Serif'; font-size: 30px;">Lítico</div>
-                <span class="info-label" style="color: rgba(255,255,255,0.7);">Indústria</span>
-            </div>
+        <div id="tab-colaboradores" class="tab-panel" style="display:none;">
+            <p class="info-label">testtesttesttest</p>
         </div>
-
-        {% if request.user.perfil in "admin,curador" or request.user.is_superuser %}
-        <form method="post" class="publish-toggle-panel">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="toggle_publicado">
-            <input type="hidden" name="published_selected" id="published-selected-input" value="{% if sitio.publicado %}1{% else %}0{% endif %}">
-            <label for="published-checkbox-detail">
-                <input type="checkbox" id="published-checkbox-detail" {% if sitio.publicado %}checked{% endif %}>
-                Publicado no mapa e na lista
-            </label>
-            <div id="publish-chip" class="publish-chip {% if sitio.publicado %}is-published{% else %}is-unpublished{% endif %}">
-                {% if sitio.publicado %}Publicado{% else %}Não publicado{% endif %}
-            </div>
-            <div style="margin-top: 12px;">
-                <button type="submit" style="background:#312113; color:#FFF; border:none; border-radius:4px; padding:10px 14px; font-weight:700; cursor:pointer;">Salvar publicação</button>
-            </div>
-        </form>
-        {% endif %}
-    </aside>
-</div>{# /page-content #}
-
-<div style="max-width: 1280px; margin: 48px auto; padding: 0 32px;">
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; border-top: 1px solid var(--figma-border); padding-top: 32px;">
-        <div>
-            <h2 style="font-family: 'Liberation Serif'; font-size: 30px; color: var(--figma-brown-dark); margin:0;">Mídias do Bem</h2>
-            <p class="info-label" style="font-weight:400; text-transform: none; margin-top:8px;">Registros visuais e documentação in-situ.</p>
+        <div id="tab-artigos" class="tab-panel" style="display:none;">
+            <p class="info-label">testtesttesttest</p>
         </div>
-        <a href="#" style="background: var(--figma-brown-dark); color: white; padding: 8px 24px; text-decoration: none; font-weight: 700; font-size: 14px; border-radius: 2px;">VER TUDO</a>
     </div>
 
-    <div class="media-grid">
-        {% for img in sitio.midias.all %}
-            <div class="media-item {% if forloop.first %}media-main{% endif %}">
-                <img src="{{ img.url }}" alt="{{ img.descricao }}">
-            </div>
-        {% empty %}
-            <p class="info-label" style="grid-column: span 3; text-align: center; padding: 40px;">Nenhuma imagem cadastrada.</p>
-        {% endfor %}
-    </div>
-</div>
+
 
 {% if audit_entries %}
 <div style="max-width: 1280px; margin: 48px auto; padding: 0 32px;">
@@ -228,4 +249,25 @@
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{% static 'js/pesquisa_detail.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // deactivate all buttons
+            tabs.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // hide all panels
+            const panels = document.querySelectorAll('.tab-panel');
+            panels.forEach(p => p.style.display = 'none');
+
+            // show target
+            const target = document.getElementById(btn.dataset.target);
+            if (target) target.style.display = '';
+        });
+    });
+});
+</script>
 {% endblock %}
