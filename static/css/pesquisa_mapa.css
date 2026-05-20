@@ -24,6 +24,15 @@
 .mapa-container {
     flex: 1;
     position: relative;
+    isolation: isolate;
+    z-index: 0;
+}
+
+/* Leaflet define z-index: 1000 nos controles por padrão — reduz para que
+   fiquem abaixo da topbar quando o mapa for scrollado */
+.leaflet-top,
+.leaflet-bottom {
+    z-index: 400;
 }
 
 #map {
