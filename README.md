@@ -19,7 +19,7 @@ Painel web do ecossistema arqueológico. Consome exclusivamente a **[sistema_arq
 Oferece duas frentes de uso:
 
 - **Pesquisa pública:** mapa interativo e listagem de sítios arqueológicos cadastrados
-- **Curadoria:** fila de revisão de coletas enviadas pelo app mobile, aprovação ou rejeição de registros, seleção de campos a aplicar e histórico completo de auditoria por sítio
+- **Curadoria:** fila de revisão de coletas e submissões de artigos científicos enviadas pelo app mobile, aprovação ou rejeição de registros, seleção de campos a aplicar e histórico completo de auditoria por sítio
 
 ---
 
@@ -28,12 +28,30 @@ Oferece duas frentes de uso:
 ### Pesquisa
 Mapa e listagem dos sítios publicados. Permite consulta por localização, tipo e natureza do bem. Os dados são consumidos em tempo real da API com cache local de 60 segundos. O controle de publicação na tela de detalhe do sítio (visível apenas para curador e admin) atualiza o registro via `PATCH /admin/bens-materiais/{id}/publicar`, registra auditoria e invalida o cache imediatamente.
 
+A tela de detalhe possui abas que expõem informações complementares do sítio:
+
+| Aba | Visibilidade | Conteúdo |
+|---|---|---|
+| Sobre | Pública | Dados gerais, localização e mídias |
+| Artigos | Pública | Artigos científicos vinculados ao sítio |
+| Colaboradores | Curador / Admin | Coletores e autores de artigos que contribuíram para o sítio |
+
+A aba **Colaboradores** consome `GET /admin/bens-materiais/{id}/colaboradores`. Retorna uma linha por usuário por tipo de contribuição — um mesmo usuário pode aparecer como "Coleta de campo" e "Artigo científico" se tiver contribuído nos dois fluxos. Se a API retornar erro, a mensagem é exibida na tela (com log `WARNING` no servidor) em vez de falhar silenciosamente.
+
 ### Curadoria
-Fluxo de revisão técnica para curadores e administradores:
-- Fila de coletas pendentes com filtro por status
-- Tela de revisão comparando os dados da coleta com o sítio existente
-- Seleção de campos individuais a aceitar ou rejeitar
+Fluxo de revisão técnica para curadores e administradores. A fila é **polimórfica**: aceita tanto coletas de campo quanto submissões de artigos científicos enviadas pelo aplicativo móvel.
+
+**Revisão de coleta** (`curadoria_revisao`):
+- Comparação campo a campo entre a entrada recebida e o registro oficial
+- Seleção de campos individuais a aceitar
 - Controle de publicação do sítio no momento da aprovação
+- Ações: `criarSitio`, `atualizarSitio` ou rejeitar
+
+**Revisão de artigo científico** (`curadoria_revisao_artigo`):
+- Exibe metadados do artigo (DOI, autores, periódico, resumo, link de acesso)
+- Indica se o artigo já existe na base (só criará o vínculo) ou se é novo (criará artigo + vínculo)
+- Mostra o bem material vinculado e o tipo de menção
+- Ações: aprovar vínculo (`aprovar_artigo`) ou rejeitar submissão
 
 ### Auditoria
 Histórico completo de alterações por sítio. A tela de detalhe exibe uma comparação campo a campo entre o estado anterior e os valores aplicados, diferenciando campos alterados de campos de contexto.
@@ -200,10 +218,10 @@ API_BASE_URL=https://sistemaarqueologicoapi-production.up.railway.app/api/v1
 
 ## Perfis de Acesso
 
-| Perfil | Acesso |
-|---|---|
-| `coletor` | Apenas pesquisa pública |
-| `curador` | Pesquisa + fila de curadoria + auditoria |
-| `admin` | Acesso total |
+| Perfil | Pesquisa pública | Aba Colaboradores | Fila de curadoria | Auditoria |
+|---|---|---|---|---|
+| `coletor` | ✅ | ❌ | ❌ | ❌ |
+| `curador` | ✅ | ✅ | ✅ | ✅ |
+| `admin` | ✅ | ✅ | ✅ | ✅ |
 
 Os perfis são gerenciados pela API — o painel web reflete o perfil retornado no login.

@@ -1,5 +1,8 @@
 import json
+import logging
 from types import SimpleNamespace
+
+logger = logging.getLogger(__name__)
 
 from django.core.paginator import Paginator
 from django.http import Http404, JsonResponse
@@ -8,11 +11,16 @@ from django.utils.dateparse import parse_datetime
 
 from api_client.client import (
     ApiError,
+    buscar_artigo_por_doi,
     fetch_all_bens_materiais,
+    fetch_artigos_por_bem,
     fetch_auditorias_for_bem,
     fetch_bem_material,
+    fetch_colaboradores_por_bem,
     invalidate_bens_cache,
     normalize_bem_material,
+    remover_vinculo_artigo,
+    submeter_artigo,
     toggle_publicado_bem_material,
 )
 
@@ -276,16 +284,57 @@ def site_detail(request, sitio_id):
     except ApiError:
         raise Http404("Sítio não encontrado")
 
-    if request.method == "POST" and request.POST.get("action") == "toggle_publicado":
-        publish_selected = request.POST.get("published_selected") == "1"
-        try:
-            updated_site = toggle_publicado_bem_material(sitio_id, publish_selected)
-            current_site = _site_payload(updated_site)
-            invalidate_bens_cache()
-        except ApiError:
-            raise Http404("Não foi possível atualizar o sítio")
+    if request.method == "POST":
+        action = request.POST.get("action", "")
 
-        return redirect("pesquisa-detalhe", sitio_id=sitio_id)
+        if action == "toggle_publicado":
+            publish_selected = request.POST.get("published_selected") == "1"
+            try:
+                updated_site = toggle_publicado_bem_material(sitio_id, publish_selected)
+                current_site = _site_payload(updated_site)
+                invalidate_bens_cache()
+            except ApiError:
+                raise Http404("Não foi possível atualizar o sítio")
+            return redirect("pesquisa-detalhe", sitio_id=sitio_id)
+
+        elif action == "submeter_artigo":
+            payload: dict = {
+                "bem_material_id": sitio_id,
+                "doi": request.POST.get("doi") or None,
+                "titulo": request.POST.get("titulo") or None,
+                "autores": request.POST.get("autores") or None,
+                "ano_publicacao": request.POST.get("ano_publicacao") or None,
+                "periodico": request.POST.get("periodico") or None,
+                "idioma": request.POST.get("idioma") or "pt",
+                "resumo": request.POST.get("resumo") or None,
+                "link_acesso": request.POST.get("link_acesso") or None,
+                "tipo_mencao": request.POST.get("tipo_mencao") or None,
+                "trecho_relevante": request.POST.get("trecho_relevante") or None,
+            }
+            # Se o artigo já existe na base, inclui o artigo_id para que a API
+            # faça o Cenário A (apenas cria o vínculo ArtigoBemMaterial).
+            artigo_id = request.POST.get("artigo_id")
+            if artigo_id:
+                payload["artigo_id"] = artigo_id
+            try:
+                submeter_artigo(payload)
+                from django.contrib import messages as _messages
+                _messages.success(request, "Sugestão enviada para curadoria.")
+            except ApiError as exc:
+                from django.contrib import messages as _messages
+                _messages.error(request, f"Não foi possível enviar a sugestão: {exc}")
+            return redirect("pesquisa-detalhe", sitio_id=sitio_id)
+
+        elif action == "remover_vinculo":
+            vinculo_id = request.POST.get("vinculo_id", "")
+            try:
+                remover_vinculo_artigo(vinculo_id)
+                from django.contrib import messages as _messages
+                _messages.success(request, "Vínculo removido com sucesso.")
+            except ApiError as exc:
+                from django.contrib import messages as _messages
+                _messages.error(request, f"Não foi possível remover o vínculo: {exc}")
+            return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
     try:
         published_sites = [_site_payload(site) for site in fetch_all_bens_materiais()]
@@ -318,6 +367,33 @@ def site_detail(request, sitio_id):
     except ApiError:
         audit_entries = []
 
+    try:
+        artigos = fetch_artigos_por_bem(sitio_id)
+    except ApiError:
+        artigos = []
+
+    is_curador_or_admin = (
+        request.user.is_authenticated
+        and (
+            request.user.is_superuser
+            or getattr(request.user, "perfil", None) in ("admin", "curador")
+        )
+    )
+
+    colaboradores: list = []
+    colaboradores_erro: str = ""
+    if is_curador_or_admin:
+        try:
+            colaboradores = fetch_colaboradores_por_bem(sitio_id)
+        except ApiError as _colabs_exc:
+            logger.warning(
+                "colaboradores: API error for bem=%s — %s (HTTP %s)",
+                sitio_id,
+                _colabs_exc.message,
+                _colabs_exc.status_code,
+            )
+            colaboradores_erro = f"HTTP {_colabs_exc.status_code}: {_colabs_exc.message}"
+
     site_geometry_geojson = ""
     if current_site.geometry:
         site_geometry_geojson = (
@@ -337,8 +413,21 @@ def site_detail(request, sitio_id):
             "next_site": next_site_obj,
             "audit_entries": audit_entries,
             "site_geometry_geojson": site_geometry_geojson,
+            "artigos": artigos,
+            "colaboradores": colaboradores,
+            "colaboradores_erro": colaboradores_erro,
+            "is_curador_or_admin": is_curador_or_admin,
         },
     )
+
+
+def api_buscar_doi(request):
+    """AJAX — busca artigo por DOI na base: GET /api/artigo-doi/?doi=..."""
+    doi = request.GET.get("doi", "").strip()
+    if not doi:
+        return JsonResponse({"artigo": None})
+    artigo = buscar_artigo_por_doi(doi)
+    return JsonResponse({"artigo": artigo})
 
 
 def api_sites(request):

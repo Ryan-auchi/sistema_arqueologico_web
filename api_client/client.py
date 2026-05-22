@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 import time
@@ -9,6 +10,8 @@ from typing import Any
 from urllib.parse import urljoin
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class ApiError(RuntimeError):
@@ -258,9 +261,12 @@ def _normalize_curadoria(entry: dict[str, Any]) -> dict[str, Any]:
 
     coleta = entry.get("coleta") or {}
     bem_material = entry.get("bem_material") or {}
+    submissao_artigo = entry.get("submissao_artigo") or {}
 
     return {
         "id": _normalize_text(entry.get("id")),
+        "entidade_tipo": _normalize_text(entry.get("entidade_tipo")),
+        "entidade_id": _normalize_text(entry.get("entidade_id")),
         "coleta_id": _normalize_text(entry.get("coleta_id")),
         "bem_material_id": _normalize_text(entry.get("bem_material_id")),
         "usuario_id": _normalize_text(entry.get("usuario_id")),
@@ -271,6 +277,7 @@ def _normalize_curadoria(entry: dict[str, Any]) -> dict[str, Any]:
         "criado_em": _normalize_datetime(entry.get("created_at")),
         "atualizado_em": _normalize_datetime(entry.get("updated_at")),
         "coleta": coleta if isinstance(coleta, dict) else {},
+        "submissao_artigo": submissao_artigo if isinstance(submissao_artigo, dict) else {},
         "bem_material": bem_material if isinstance(bem_material, dict) else {},
         "usuario": usuario if isinstance(usuario, dict) else {},
         "curador": curador if isinstance(curador, dict) else {},
@@ -408,6 +415,34 @@ def fetch_auditorias_for_bem(bem_id: str, *, entidade_tipo: str) -> list[dict[st
         page += 1
 
     return entries
+
+
+def fetch_artigos_por_bem(bem_id: str) -> list[dict[str, Any]]:
+    payload = _request("GET", f"/mobile/bens-materiais/{bem_id}/artigos")
+    return payload.get("artigos", []) if isinstance(payload, dict) else []
+
+
+def buscar_artigo_por_doi(doi: str) -> dict[str, Any] | None:
+    try:
+        payload = _request("GET", "/mobile/artigos-cientificos/buscar-doi", params={"doi": doi})
+        artigo = payload.get("artigo") if isinstance(payload, dict) else None
+        return artigo if isinstance(artigo, dict) else None
+    except ApiError:
+        return None
+
+
+def submeter_artigo(payload: dict[str, Any]) -> dict[str, Any]:
+    return _request("POST", "/mobile/submissoes-artigos", json_body=payload)
+
+
+def remover_vinculo_artigo(vinculo_id: str) -> None:
+    _request("DELETE", f"/admin/artigos-bem-material/{vinculo_id}")
+
+
+def fetch_colaboradores_por_bem(bem_id: str) -> list[dict[str, Any]]:
+    """Retorna colaboradores do bem material. Levanta ApiError em caso de falha."""
+    payload = _request("GET", f"/admin/bens-materiais/{bem_id}/colaboradores")
+    return payload.get("colaboradores", []) if isinstance(payload, dict) else []
 
 
 def toggle_publicado_bem_material(bem_id: str, publicado: bool) -> dict[str, Any]:

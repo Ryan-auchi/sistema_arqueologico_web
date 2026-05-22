@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block shell_class %}shell--flush{% endblock %}
+{% block title %}Revisão de Artigo | Curadoria{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/curadoria_revisao_artigo.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="review-layout">
+
+    <a class="back-link" href="{% url 'curadoria-fila' %}">← Voltar para fila</a>
+
+    <div class="review-header">
+        <p class="eyebrow">Revisão de submissão</p>
+        <h1 class="review-title">{{ submissao.titulo|default:"Artigo sem título" }}</h1>
+        <span class="type-badge">📄 Artigo científico</span>
+        {% if bem_material %}
+            <span class="type-badge" style="margin-left:8px;">📍 {{ bem_material.codigo_iphan|default:"Bem não informado" }}</span>
+        {% endif %}
+    </div>
+
+    <div class="content-grid">
+
+        <!-- Dados do artigo -->
+        <div class="article-card">
+
+            <div class="card-section">
+                <p class="section-label">Identificação do artigo</p>
+
+                {% if submissao.doi %}
+                <div class="field-row">
+                    <span class="field-key">DOI</span>
+                    <span class="field-val">
+                        <a href="https://doi.org/{{ submissao.doi }}" target="_blank" rel="noopener">{{ submissao.doi }}</a>
+                    </span>
+                </div>
+                {% endif %}
+
+                {% if submissao.autores %}
+                <div class="field-row">
+                    <span class="field-key">Autores</span>
+                    <span class="field-val">{{ submissao.autores }}</span>
+                </div>
+                {% endif %}
+
+                {% if submissao.ano_publicacao %}
+                <div class="field-row">
+                    <span class="field-key">Ano</span>
+                    <span class="field-val">{{ submissao.ano_publicacao }}</span>
+                </div>
+                {% endif %}
+
+                {% if submissao.periodico %}
+                <div class="field-row">
+                    <span class="field-key">Periódico</span>
+                    <span class="field-val">{{ submissao.periodico }}</span>
+                </div>
+                {% endif %}
+
+                {% if submissao.idioma %}
+                <div class="field-row">
+                    <span class="field-key">Idioma</span>
+                    <span class="field-val">{{ submissao.idioma|upper }}</span>
+                </div>
+                {% endif %}
+
+                {% if submissao.link_acesso %}
+                <div class="field-row">
+                    <span class="field-key">Link de acesso</span>
+                    <span class="field-val">
+                        <a href="{{ submissao.link_acesso }}" target="_blank" rel="noopener">{{ submissao.link_acesso }}</a>
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if submissao.resumo %}
+            <div class="card-section">
+                <p class="section-label">Resumo</p>
+                <p class="resumo-text">{{ submissao.resumo }}</p>
+            </div>
+            {% endif %}
+
+            <div class="card-section">
+                <p class="section-label">Vínculo com o bem material</p>
+
+                <div class="field-row">
+                    <span class="field-key">Tipo de menção</span>
+                    <span class="field-val">{{ tipo_mencao_label|default:submissao.tipo_mencao }}</span>
+                </div>
+
+                {% if submissao.trecho_relevante %}
+                <div style="margin-top: 12px;">
+                    <span class="field-key" style="display:block; margin-bottom:4px;">Trecho relevante</span>
+                    <div class="trecho-box">{{ submissao.trecho_relevante }}</div>
+                </div>
+                {% endif %}
+
+                {% if bem_material %}
+                <div style="margin-top: 20px;">
+                    <span class="field-key" style="display:block; margin-bottom:8px;">Bem material vinculado</span>
+                    <div class="bem-ref">
+                        <p class="bem-name">{{ bem_material.nome_bem|default:"Sem nome" }}</p>
+                        <span class="bem-code">{{ bem_material.codigo_iphan }}</span>
+                        {% if bem_material.municipio %}
+                            <span class="bem-code"> · {{ bem_material.municipio }}{% if bem_material.uf %}/{{ bem_material.uf }}{% endif %}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if submissao.artigo_id %}
+            <div class="card-section" style="background: rgba(220, 252, 231, 0.3);">
+                <p class="section-label" style="color: #166534;">Artigo já cadastrado</p>
+                <p style="font-size: 13px; color: #166534;">
+                    Este artigo já existe na base (id: <code>{{ submissao.artigo_id }}</code>).
+                    Ao aprovar, apenas o vínculo com o bem material será criado.
+                </p>
+            </div>
+            {% else %}
+            <div class="card-section" style="background: rgba(254, 249, 195, 0.3);">
+                <p class="section-label" style="color: #854d0e;">Artigo novo</p>
+                <p style="font-size: 13px; color: #854d0e;">
+                    Ao aprovar, um novo registro em <em>artigos_cientificos</em> será criado
+                    junto com o vínculo ao bem material.
+                </p>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <!-- Painel de decisão -->
+        <div class="decision-panel">
+            <div class="panel-card">
+                <h2 class="panel-title">Decisão</h2>
+
+                <div>
+                    <span class="status-current status-{{ curadoria.status }}">
+                        {{ curadoria.status|title }}
+                    </span>
+                </div>
+
+                {% if curadoria.status == "pendente" %}
+                <form method="post">
+                    {% csrf_token %}
+                    <span class="obs-label">Observação (opcional)</span>
+                    <textarea class="obs-textarea" name="observacao" placeholder="Notas para o submissor...">{{ curadoria.observacao }}</textarea>
+
+                    <button type="submit" name="action" value="aprovar_artigo" class="btn-approve">
+                        ✔ Aprovar vínculo
+                    </button>
+                    <button type="submit" name="action" value="rejeitar" class="btn-reject"
+                            onclick="return confirm('Confirmar rejeição?')">
+                        ✖ Rejeitar submissão
+                    </button>
+                </form>
+                {% else %}
+                <p style="font-size: 13px; color: #80756d; margin: 0;">
+                    Esta curadoria já foi avaliada ({{ curadoria.acao_resultante }}).
+                </p>
+                {% endif %}
+            </div>
+
+            {% if curadoria.observacao and curadoria.status != "pendente" %}
+            <div class="panel-card">
+                <p class="section-label">Observação registrada</p>
+                <p style="font-size: 14px; color: #4e453e; margin: 0;">{{ curadoria.observacao }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
