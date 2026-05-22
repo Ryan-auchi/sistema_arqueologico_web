@@ -2,8 +2,6 @@ import json
 import logging
 from types import SimpleNamespace
 
-logger = logging.getLogger(__name__)
-
 from django.core.paginator import Paginator
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
@@ -23,6 +21,8 @@ from api_client.client import (
     submeter_artigo,
     toggle_publicado_bem_material,
 )
+
+logger = logging.getLogger(__name__)
 
 ENTITY_TYPE_BEM_MATERIAL = "App\\Models\\BemMaterial"
 
