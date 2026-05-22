@@ -36,7 +36,7 @@ A tela de detalhe possui abas que expõem informações complementares do sítio
 | Artigos | Pública | Artigos científicos vinculados ao sítio |
 | Colaboradores | Usuário autenticado | Coletores e autores de artigos que contribuíram para o sítio |
 
-A aba **Colaboradores** consome `GET /admin/bens-materiais/{id}/colaboradores`. Retorna uma linha por usuário por tipo de contribuição — um mesmo usuário pode aparecer como "Coleta de campo" e "Artigo científico" se tiver contribuído nos dois fluxos. Se a API retornar erro, a mensagem é exibida na tela (com log `WARNING` no servidor) em vez de falhar silenciosamente.
+A aba **Colaboradores** consome `GET /mobile/bens-materiais/{id}/colaboradores`. Retorna uma linha por usuário por tipo de contribuição — um mesmo usuário pode aparecer como "Coleta de campo" e "Artigo científico" se tiver contribuído nos dois fluxos. Se a API retornar erro, a mensagem é exibida na tela (com log `WARNING` no servidor) em vez de falhar silenciosamente.
 
 ### Curadoria
 Fluxo de revisão técnica para curadores e administradores. A fila é **polimórfica**: aceita tanto coletas de campo quanto submissões de artigos científicos enviadas pelo aplicativo móvel.
