@@ -34,7 +34,7 @@ A tela de detalhe possui abas que expõem informações complementares do sítio
 |---|---|---|
 | Sobre | Pública | Dados gerais, localização e mídias |
 | Artigos | Pública | Artigos científicos vinculados ao sítio |
-| Colaboradores | Curador / Admin | Coletores e autores de artigos que contribuíram para o sítio |
+| Colaboradores | Usuário autenticado | Coletores e autores de artigos que contribuíram para o sítio |
 
 A aba **Colaboradores** consome `GET /admin/bens-materiais/{id}/colaboradores`. Retorna uma linha por usuário por tipo de contribuição — um mesmo usuário pode aparecer como "Coleta de campo" e "Artigo científico" se tiver contribuído nos dois fluxos. Se a API retornar erro, a mensagem é exibida na tela (com log `WARNING` no servidor) em vez de falhar silenciosamente.
 
@@ -220,7 +220,7 @@ API_BASE_URL=https://sistemaarqueologicoapi-production.up.railway.app/api/v1
 
 | Perfil | Pesquisa pública | Aba Colaboradores | Fila de curadoria | Auditoria |
 |---|---|---|---|---|
-| `coletor` | ✅ | ❌ | ❌ | ❌ |
+| `coletor` | ✅ | ✅ | ❌ | ❌ |
 | `curador` | ✅ | ✅ | ✅ | ✅ |
 | `admin` | ✅ | ✅ | ✅ | ✅ |
 

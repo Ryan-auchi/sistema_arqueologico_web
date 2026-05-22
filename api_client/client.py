@@ -441,7 +441,7 @@ def remover_vinculo_artigo(vinculo_id: str) -> None:
 
 def fetch_colaboradores_por_bem(bem_id: str) -> list[dict[str, Any]]:
     """Retorna colaboradores do bem material. Levanta ApiError em caso de falha."""
-    payload = _request("GET", f"/admin/bens-materiais/{bem_id}/colaboradores")
+    payload = _request("GET", f"/mobile/bens-materiais/{bem_id}/colaboradores")
     return payload.get("colaboradores", []) if isinstance(payload, dict) else []
 
 

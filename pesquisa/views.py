@@ -382,7 +382,7 @@ def site_detail(request, sitio_id):
 
     colaboradores: list = []
     colaboradores_erro: str = ""
-    if is_curador_or_admin:
+    if request.user.is_authenticated:
         try:
             colaboradores = fetch_colaboradores_por_bem(sitio_id)
         except ApiError as _colabs_exc:
