@@ -1,7 +1,3 @@
-.shell {
-    padding: 0;
-}
-
 .mapa-fullscreen {
     display: flex;
     min-height: calc(100vh - var(--top-nav-height));
