@@ -1,22 +1,3 @@
-:root {
-    --figma-bg: #F8F9FA;
-    --figma-brown-dark: #312113;
-    --figma-brown-light: #BA9F8B;
-    --figma-text-muted: #615E5C;
-    --figma-border: rgba(210, 196, 187, 0.2);
-    --figma-conflict: #BA9F8B;
-}
-
-.shell {
-    padding: 0;
-}
-
-body {
-    background: var(--figma-bg);
-    font-family: 'Inter', sans-serif;
-    color: #191C1D;
-}
-
 .main-container {
     display: flex;
     flex-direction: column;

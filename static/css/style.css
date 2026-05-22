@@ -8,6 +8,14 @@
     --border: rgba(210, 196, 187, 0.3);
     --shadow: 0 12px 32px rgba(40, 24, 11, 0.06);
     --radius-lg: 20px;
+
+    /* Paleta figma — compartilhada por todas as páginas */
+    --figma-bg: #f8f9fa;
+    --figma-brown-dark: #312113;
+    --figma-brown-light: #ba9f8b;
+    --figma-text-muted: #80756d;
+    --figma-border: rgba(210, 196, 187, 0.2);
+    --figma-conflict: #ba9f8b;
 }
 
 * {
@@ -255,6 +263,10 @@ body {
     flex: 1;
     min-height: calc(100vh - var(--top-nav-height));
     padding: 28px 32px 40px;
+}
+
+.shell--flush {
+    padding: 0;
 }
 
 .hero,

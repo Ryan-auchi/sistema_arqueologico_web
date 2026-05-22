@@ -140,20 +140,31 @@ def _normalize_user(raw: dict) -> dict:
 
 def _curadoria_item(raw: dict) -> SimpleNamespace:
     """Transforma um dict de curadoria da API em namespace para o template."""
+    entidade_tipo = raw.get("entidade_tipo") or "coleta"
     coleta = raw.get("coleta") or {}
     bem_material = raw.get("bem_material") or {}
+    submissao_artigo = raw.get("submissao_artigo") or {}
     usuario = _normalize_user(raw.get("usuario") or {})
     curador = _normalize_user(raw.get("curador") or {})
 
     display_user = curador or usuario or {"nome": "Equipe de curadoria"}
 
-    iphan = bem_material.get("codigo_iphan") or coleta.get("codigo_iphan") or "IPHAN não informado"
-    nome = coleta.get("nome_bem") or bem_material.get("nome_bem") or "Sem nome informado"
+    if entidade_tipo == "submissao_artigo":
+        iphan = bem_material.get("codigo_iphan") or "IPHAN não informado"
+        nome = submissao_artigo.get("titulo") or bem_material.get("nome_bem") or "Artigo sem título"
+        tipo_label = "Artigo científico"
+    else:
+        iphan = bem_material.get("codigo_iphan") or coleta.get("codigo_iphan") or "IPHAN não informado"
+        nome = coleta.get("nome_bem") or bem_material.get("nome_bem") or "Sem nome informado"
+        tipo_label = "Coleta de campo"
+
     status_display = _status_label(raw.get("status"))
 
     return _namespace(
         {
             "id": raw.get("id"),
+            "entidade_tipo": entidade_tipo,
+            "tipo_label": tipo_label,
             "codigo_iphan_display": iphan,
             "nome_display": nome,
             "observacao": raw.get("observacao") or "",
@@ -163,6 +174,7 @@ def _curadoria_item(raw: dict) -> SimpleNamespace:
             "bem_material_id": raw.get("bem_material_id"),
             "usuario": display_user,
             "coleta": coleta,
+            "submissao_artigo": submissao_artigo,
             "bem_material": bem_material,
             "curador": curador,
             "get_status_display": lambda s=status_display: s,
@@ -434,6 +446,84 @@ def curadoria_fila(request):
     )
 
 
+def _handle_revisao_artigo(request, curadoria_id: str, curadoria_raw: dict):
+    """
+    Lida com revisão de submissão de artigo científico (entidade_tipo='submissao_artigo').
+    Chamado internamente por curadoria_revisao() após detecção do tipo.
+    """
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+
+        if action == "rejeitar":
+            payload: dict = {
+                "status": "rejeitado",
+                "acao_resultante": "rejeitar",
+                "observacao": request.POST.get("observacao") or None,
+            }
+        elif action == "aprovar_artigo":
+            payload = {
+                "status": "aprovado",
+                "acao_resultante": "aprovar",
+                "observacao": request.POST.get("observacao") or None,
+            }
+        else:
+            messages.error(request, "Ação desconhecida.")
+            return redirect("curadoria-revisao", curadoria_id=curadoria_id)
+
+        try:
+            update_curadoria_avaliacao(curadoria_id, payload)
+            invalidate_bens_cache()
+            messages.success(request, "Curadoria avaliada com sucesso.")
+        except ApiError as exc:
+            messages.error(request, f"Não foi possível atualizar a curadoria: {exc}")
+            return redirect("curadoria-revisao", curadoria_id=curadoria_id)
+
+        return redirect("curadoria-fila")
+
+    # ── GET ──────────────────────────────────────────────────────────────────
+    submissao = curadoria_raw.get("submissao_artigo") or {}
+    bem_material_raw = curadoria_raw.get("bem_material") or {}
+
+    request_user = (
+        getattr(request.user, "nome", None)
+        or getattr(request.user, "name", None)
+        or getattr(request.user, "email", None)
+        or "Equipe de curadoria"
+    )
+
+    curadoria_ctx = _namespace(
+        {
+            "id": curadoria_raw.get("id"),
+            "usuario": {"nome": request_user},
+            "observacao": curadoria_raw.get("observacao") or "",
+            "status": curadoria_raw.get("status") or "pendente",
+            "acao_resultante": curadoria_raw.get("acao_resultante") or "",
+        }
+    )
+
+    tipo_mencao_labels = {
+        "citacao": "Citação direta",
+        "estudo_aprofundado": "Estudo aprofundado",
+        "referencia_geografica": "Referência geográfica",
+        "analise_artefatos": "Análise de artefatos",
+    }
+    tipo_mencao_raw = submissao.get("tipo_mencao") or ""
+    tipo_mencao_label = tipo_mencao_labels.get(tipo_mencao_raw, tipo_mencao_raw)
+
+    return render(
+        request,
+        "curador/curadoria_revisao_artigo.html",
+        {
+            "nav_active": "curadoria",
+            "curadoria": curadoria_ctx,
+            "submissao": _namespace(submissao),
+            "tipo_mencao_label": tipo_mencao_label,
+            "bem_material": _namespace(normalize_bem_material(bem_material_raw)) if bem_material_raw else None,
+            "bem_material_raw": bem_material_raw,
+        },
+    )
+
+
 @curador_or_admin_required
 def curadoria_revisao(request, curadoria_id):
     """
@@ -443,13 +533,18 @@ def curadoria_revisao(request, curadoria_id):
     POST — envia a avaliação para PATCH /admin/curadorias/{id}/avaliar.
 
     Enum values esperados pela API (camelCase):
-      acao_resultante: criarSitio | atualizarSitio | rejeitar
+      acao_resultante: criarSitio | atualizarSitio | rejeitar | aprovar
       status:          aprovado   | rejeitado
     """
     try:
         curadoria_raw = fetch_curadoria(curadoria_id)
     except ApiError:
         raise Http404("Curadoria não encontrada")
+
+    # Curadorias de submissão de artigo têm tela de revisão própria.
+    entidade_tipo = curadoria_raw.get("entidade_tipo") or "coleta"
+    if entidade_tipo == "submissao_artigo":
+        return _handle_revisao_artigo(request, curadoria_id, curadoria_raw)
 
     if request.method == "POST":
         action = request.POST.get("action", "")
