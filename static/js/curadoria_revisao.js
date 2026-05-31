@@ -3,35 +3,11 @@
 
     const selectedFields = new Set();
 
-    // requiresIphanForm is injected via data-requires-iphan attribute on the form
-    const form = document.getElementById('merge-form');
-    const requiresIphanForm = form && form.dataset.requiresIphan === 'true';
-
     const selectedFieldsInput = document.getElementById('selected-fields-input');
     const importMediaInput = document.getElementById('import-media-input');
     const publishedInput = document.getElementById('published-input');
     const publishedCheckbox = document.getElementById('published-checkbox');
     const publishedStatusChip = document.getElementById('published-status-chip');
-    const approveButton = document.getElementById('approve-merge-button');
-    const iphanOverlay = document.getElementById('iphan-modal-overlay');
-    const iphanConfirmButton = document.getElementById('iphan-confirm-button');
-    const iphanCancelButton = document.getElementById('iphan-cancel-button');
-
-    function openIphanModal() {
-        if (!iphanOverlay) {
-            return;
-        }
-        iphanOverlay.classList.add('is-open');
-        iphanOverlay.setAttribute('aria-hidden', 'false');
-    }
-
-    function closeIphanModal() {
-        if (!iphanOverlay) {
-            return;
-        }
-        iphanOverlay.classList.remove('is-open');
-        iphanOverlay.setAttribute('aria-hidden', 'true');
-    }
 
     function syncFields() {
         if (selectedFieldsInput) {
@@ -84,34 +60,6 @@
                 publishedStatusChip.classList.toggle('is-published', publishedCheckbox.checked);
                 publishedStatusChip.classList.toggle('is-unpublished', !publishedCheckbox.checked);
                 publishedStatusChip.textContent = publishedCheckbox.checked ? 'Publicado' : 'Não publicado';
-            }
-        });
-    }
-
-    if (requiresIphanForm && approveButton && form) {
-        approveButton.addEventListener('click', function (event) {
-            if (form.dataset.iphanConfirmed === '1') {
-                return;
-            }
-            event.preventDefault();
-            openIphanModal();
-        });
-    }
-
-    if (iphanCancelButton) {
-        iphanCancelButton.addEventListener('click', function () {
-            closeIphanModal();
-        });
-    }
-
-    if (iphanConfirmButton && form) {
-        iphanConfirmButton.addEventListener('click', function () {
-            form.dataset.iphanConfirmed = '1';
-            closeIphanModal();
-            if (approveButton && typeof form.requestSubmit === 'function') {
-                form.requestSubmit(approveButton);
-            } else {
-                form.submit();
             }
         });
     }
