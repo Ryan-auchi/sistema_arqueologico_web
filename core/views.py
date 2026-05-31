@@ -3,7 +3,15 @@ from django.contrib.auth import get_user_model, login, logout
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from api_client.client import ApiError, clear_api_auth_token, fetch_all_bens_materiais, login_to_api, register_to_api, request_password_reset, set_api_auth_token
+from api_client.client import (
+    ApiError,
+    clear_api_auth_token,
+    fetch_all_bens_materiais,
+    login_to_api,
+    register_to_api,
+    request_password_reset,
+    set_api_auth_token,
+)
 
 
 def home(request):
