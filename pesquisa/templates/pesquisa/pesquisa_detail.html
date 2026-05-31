@@ -272,7 +272,6 @@
             {% endif %}
 
             <!-- Botão/formulário "Sugerir novo estudo" -->
-            {% if request.user.is_authenticated %}
             <div style="border-top:1px solid var(--figma-border); padding-top:32px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                     <div>
@@ -280,12 +279,22 @@
                         <p class="info-label" style="font-weight:400; text-transform:none;">A sugestão passa por curadoria antes de ser publicada.</p>
                     </div>
                     <button type="button" id="btn-toggle-form"
-                            onclick="document.getElementById('form-artigo').style.display = document.getElementById('form-artigo').style.display === 'none' ? 'block' : 'none';"
+                            onclick="toggleSugerirForm()"
+                            {% if not request.user.is_authenticated %}data-require-login="true" data-login-url="{% url 'auth-login' %}"{% endif %}
                             style="background:#312113; color:#fff; border:none; border-radius:4px; padding:10px 20px; font-weight:700; font-size:13px; cursor:pointer;">
                         + Sugerir estudo
                     </button>
                 </div>
 
+                <!-- Aviso de login (visível apenas para não autenticados após clicar) -->
+                <div id="aviso-login" style="display:none; background:#fdf6ee; border:1px solid rgba(210,196,187,0.6); border-radius:6px; padding:20px 24px; text-align:center;">
+                    <p style="margin:0; font-size:14px; color:#4e453e;">
+                        Para sugerir um estudo científico você precisa estar logado.
+                        <a href="{% url 'auth-login' %}" style="color:#312113; font-weight:700; text-decoration:underline;">Entrar na conta</a>
+                    </p>
+                </div>
+
+                {% if request.user.is_authenticated %}
                 <div id="form-artigo" style="display:none;">
                     <form method="post" style="background:#fff; border:1px solid rgba(210,196,187,0.3); border-radius:6px; padding:24px;">
                         {% csrf_token %}
@@ -374,15 +383,8 @@
                         </div>
                     </form>
                 </div>
+                {% endif %}
             </div>
-            {% else %}
-            <div style="border-top:1px solid var(--figma-border); padding-top:24px; text-align:center; color:#80756d;">
-                <p style="font-size:13px;">
-                    <a href="{% url 'login' %}" style="color:#312113; font-weight:700;">Entre na sua conta</a>
-                    para sugerir estudos científicos sobre este bem material.
-                </p>
-            </div>
-            {% endif %}
         </div>
     </div>
 
@@ -471,6 +473,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+
+function toggleSugerirForm() {
+    const btn = document.getElementById('btn-toggle-form');
+    if (btn.dataset.requireLogin) {
+        const aviso = document.getElementById('aviso-login');
+        aviso.style.display = aviso.style.display === 'none' ? 'block' : 'none';
+        return;
+    }
+    const form = document.getElementById('form-artigo');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
 
 function buscarDoi() {
     const doi = document.getElementById('doi-input').value.trim();

@@ -18,6 +18,7 @@ from api_client.client import (
     invalidate_bens_cache,
     normalize_bem_material,
     remover_vinculo_artigo,
+    set_api_auth_token,
     submeter_artigo,
     toggle_publicado_bem_material,
 )
@@ -228,6 +229,7 @@ def _filter_options(sites):
 
 
 def pesquisa_mapa(request):
+    set_api_auth_token(request.session.get("api_auth_token", ""))
     sites, current_filters = _filtered_sites(request)
     state_options, municipality_options, conservation_options, legal_level_options, nature_options, type_options = (
         _filter_options(sites)
@@ -252,6 +254,7 @@ def pesquisa_mapa(request):
 
 
 def pesquisa_lista(request):
+    set_api_auth_token(request.session.get("api_auth_token", ""))
     sites, current_filters = _filtered_sites(request)
     paginator = Paginator(sites, 6)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -279,6 +282,7 @@ def pesquisa_lista(request):
 
 
 def site_detail(request, sitio_id):
+    set_api_auth_token(request.session.get("api_auth_token", ""))
     try:
         current_site = _site_payload(fetch_bem_material(sitio_id))
     except ApiError:
@@ -382,17 +386,16 @@ def site_detail(request, sitio_id):
 
     colaboradores: list = []
     colaboradores_erro: str = ""
-    if request.user.is_authenticated:
-        try:
-            colaboradores = fetch_colaboradores_por_bem(sitio_id)
-        except ApiError as _colabs_exc:
-            logger.warning(
-                "colaboradores: API error for bem=%s — %s (HTTP %s)",
-                sitio_id,
-                _colabs_exc.message,
-                _colabs_exc.status_code,
-            )
-            colaboradores_erro = f"HTTP {_colabs_exc.status_code}: {_colabs_exc.message}"
+    try:
+        colaboradores = fetch_colaboradores_por_bem(sitio_id)
+    except ApiError as _colabs_exc:
+        logger.warning(
+            "colaboradores: API error for bem=%s — %s (HTTP %s)",
+            sitio_id,
+            _colabs_exc.message,
+            _colabs_exc.status_code,
+        )
+        colaboradores_erro = f"HTTP {_colabs_exc.status_code}: {_colabs_exc.message}"
 
     site_geometry_geojson = ""
     if current_site.geometry:
