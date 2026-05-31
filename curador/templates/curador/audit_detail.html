@@ -338,21 +338,67 @@
                     <span class="label-caps">Operação</span>
                     <span class="status-badge">{{ audit_entry.operacao|default:"-"|upper }}</span>
                 </div>
+                {% if audit_entry.curadoria and audit_entry.curadoria.status %}
+                <div class="summary-item">
+                    <span class="label-caps">Resultado da curadoria</span>
+                    <span class="status-badge"
+                          style="{% if audit_entry.curadoria.status == 'aprovado' %}background:#dcfce7; color:#166534;{% elif audit_entry.curadoria.status == 'rejeitado' %}background:#fee2e2; color:#991b1b;{% endif %}">
+                        {{ audit_entry.curadoria.status|upper }}
+                    </span>
+                </div>
+                {% endif %}
             </div>
         </header>
 
+        {% if field_status is not None %}
+        {# ── Visão coleta × aprovação (curadoria de BemMaterial) ─────────── #}
+        <div class="comparison-table">
+            <div class="table-header" style="grid-template-columns: 240px 1fr 160px;">
+                <span class="label-caps">Campo</span>
+                <span class="label-caps">Valor da coleta</span>
+                <span class="label-caps">Status</span>
+            </div>
+
+            {% for item in field_status %}
+                <div class="row" style="grid-template-columns: 240px 1fr 160px;">
+                    <div class="field-label">{{ item.label }}</div>
+                    <div class="value-box">{{ item.coleta_value }}</div>
+                    <div class="value-box">
+                        {% if item.estado == "aprovado" %}
+                            <span style="display:inline-flex; align-items:center; gap:5px; background:#dcfce7; color:#166534; border-radius:4px; padding:3px 10px; font-size:11px; font-weight:700; text-transform:uppercase;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                Aprovado
+                            </span>
+                        {% elif item.estado == "rejeitado" %}
+                            <span style="display:inline-flex; align-items:center; gap:5px; background:#fee2e2; color:#991b1b; border-radius:4px; padding:3px 10px; font-size:11px; font-weight:700; text-transform:uppercase;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                Rejeitado
+                            </span>
+                        {% else %}
+                            <span style="display:inline-flex; align-items:center; gap:5px; background:#f3f4f5; color:#80756d; border-radius:4px; padding:3px 10px; font-size:11px; font-weight:700; text-transform:uppercase; border:1px solid #e5e7eb;">
+                                Não aplicado
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="comparison-empty">Nenhum campo da coleta disponível.</div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        {# ── Tabela de comparação padrão (auditorias manuais / sem coleta) ── #}
         <div class="comparison-table">
             <div class="table-header">
-                <span class="label-caps">Field Name</span>
-                <span class="label-caps">Previous Value</span>
-                <span class="label-caps">Updated Value</span>
+                <span class="label-caps">Campo</span>
+                <span class="label-caps">Valor anterior</span>
+                <span class="label-caps">Valor atualizado</span>
             </div>
 
             {% for comparison in comparisons %}
                 <div class="row {% if comparison.old_value|length > 120 or comparison.new_value|length > 120 %}row-expanded{% endif %} {% if not comparison.changed %}row-unchanged{% endif %}">
                     <div class="field-label">{{ comparison.label }}</div>
 
-                    {# Coluna "Valor Anterior" #}
                     <div class="value-box">
                         {% if comparison.changed %}
                             {% if comparison.old_value %}
@@ -361,7 +407,6 @@
                                 <span class="empty-value">Não informado</span>
                             {% endif %}
                         {% else %}
-                            {# Campo de contexto — não foi alterado, exibe sem tachado #}
                             {% if comparison.old_value %}
                                 <span class="unchanged-value">{{ comparison.old_value }}</span>
                             {% else %}
@@ -370,7 +415,6 @@
                         {% endif %}
                     </div>
 
-                    {# Coluna "Valor Novo" #}
                     <div class="value-box">
                         {% if comparison.changed %}
                             {% if comparison.new_value %}
@@ -387,6 +431,7 @@
                 <div class="comparison-empty">Nenhuma comparação disponível para esta auditoria.</div>
             {% endfor %}
         </div>
+        {% endif %}
 
         <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:stretch;">
             <div class="notes-card">
