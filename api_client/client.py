@@ -106,6 +106,46 @@ def login_to_api(email: str, password: str) -> tuple[str, dict[str, Any]]:
     return token, user
 
 
+def register_to_api(
+    name: str,
+    email: str,
+    password: str,
+    password_confirmation: str,
+    classificacao: str,
+) -> tuple[str, dict[str, Any]]:
+    payload = _request(
+        "POST",
+        "/auth/register",
+        json_body={
+            "name": name,
+            "email": email,
+            "password": password,
+            "password_confirmation": password_confirmation,
+            "classificacao": classificacao,
+        },
+        base_url=API_AUTH_BASE_URL,
+    )
+
+    token = _normalize_text(payload.get("token"))
+    user = payload.get("user") if isinstance(payload.get("user"), dict) else {}
+
+    if not token:
+        raise ApiError("API registration did not return a token.")
+
+    return token, user
+
+
+def request_password_reset(email: str) -> str:
+    payload = _request(
+        "POST",
+        "/auth/password-reset",
+        json_body={"email": email},
+        base_url=API_AUTH_BASE_URL,
+    )
+    return _normalize_text(payload.get("message"))
+
+
+
 def _unwrap_paginated(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if isinstance(payload.get("data"), list):
         data = payload["data"]
@@ -159,9 +199,14 @@ def _normalize_relations(site: dict[str, Any]) -> dict[str, Any]:
     if isinstance(responsavel, dict) and "data" in responsavel and isinstance(responsavel["data"], dict):
         responsavel = responsavel["data"]
 
+    curador_responsavel = site.get("curador_responsavel") or {}
+    if isinstance(curador_responsavel, dict) and "data" in curador_responsavel and isinstance(curador_responsavel["data"], dict):
+        curador_responsavel = curador_responsavel["data"]
+
     return {
         "midias": midias if isinstance(midias, list) else [],
         "responsavel": responsavel if isinstance(responsavel, dict) else {},
+        "curador_responsavel": curador_responsavel if isinstance(curador_responsavel, dict) else {},
     }
 
 
@@ -208,6 +253,7 @@ def normalize_bem_material(site: dict[str, Any]) -> dict[str, Any]:
         "deletado_em": _normalize_datetime(site.get("deletado_em") or site.get("deleted_at")),
         "midias": relations["midias"],
         "responsavel": relations["responsavel"],
+        "curador_responsavel": relations["curador_responsavel"],
     }
 
 
@@ -451,3 +497,25 @@ def toggle_publicado_bem_material(bem_id: str, publicado: bool) -> dict[str, Any
     if not isinstance(data, dict):
         raise ApiError("API response for bem material publicar was not an object")
     return normalize_bem_material(data)
+
+
+def fetch_curadores() -> list[dict[str, Any]]:
+    payload = _request("GET", "/admin/usuarios/curadores")
+    data = payload.get("data") if isinstance(payload, dict) else []
+    return data if isinstance(data, list) else []
+
+
+def atualizar_curador_responsavel(bem_id: str, curador_responsavel_id: str | None) -> dict[str, Any]:
+    response = _request(
+        "PATCH",
+        f"/admin/bens-materiais/{bem_id}/curador-responsavel",
+        json_body={"curador_responsavel_id": curador_responsavel_id},
+    )
+    data = response.get("data") if isinstance(response, dict) and isinstance(response.get("data"), dict) else response
+    if not isinstance(data, dict):
+        raise ApiError("API response for curador responsavel update was not an object")
+    return normalize_bem_material(data)
+
+
+def excluir_bem_material(bem_id: str) -> None:
+    _request("DELETE", f"/admin/bens-materiais/{bem_id}")

@@ -73,10 +73,6 @@
     color: #991B1B;
 }
 
-/* Seção IPHAN */
-.iphan-box { background: #EDEEEF; border-radius: 8px; padding: 32px; }
-.iphan-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-
 /* Media Grid */
 .media-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-top: 24px; }
 .media-item { border-radius: 4px; overflow: hidden; height: 240px; }

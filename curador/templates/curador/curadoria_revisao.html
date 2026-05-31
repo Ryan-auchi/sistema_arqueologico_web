@@ -28,101 +28,12 @@
         {% endif %}
     </header>
 
-    <form method="post" id="merge-form" data-requires-iphan="{{ requires_iphan_form|yesno:'true,false' }}">
+    <form method="post" id="merge-form">
         {% csrf_token %}
         <input type="hidden" name="action" value="aprovar_mesclar">
         <input type="hidden" name="selected_fields" id="selected-fields-input" value="[]">
         <input type="hidden" name="import_media_selected" id="import-media-input" value="0">
         <input type="hidden" name="published_selected" id="published-input" value="{% if default_published %}1{% else %}0{% endif %}">
-
-        <div id="iphan-modal-overlay" class="iphan-modal-overlay" aria-hidden="true">
-            <div class="iphan-modal" role="dialog" aria-modal="true" aria-labelledby="iphan-modal-title">
-                <h3 id="iphan-modal-title" class="iphan-modal-title">Dados IPHAN Administrativo</h3>
-                <p class="new-field-note">Preencha os campos do IPHAN para o novo sítio. Os valores iniciais já estão pré-preenchidos para agilizar.</p>
-
-                <div class="iphan-form-grid">
-                    <div class="iphan-form-field">
-                        <label for="iphan_nivel_homologacao">Nível de homologação</label>
-                        <select id="iphan_nivel_homologacao" name="iphan_nivel_homologacao">
-                            <option value="total" {% if iphan_defaults.nivel_homologacao == 'total' %}selected{% endif %}>Total</option>
-                            <option value="parcial" {% if iphan_defaults.nivel_homologacao == 'parcial' %}selected{% endif %}>Parcial</option>
-                            <option value="nao_homologado" {% if iphan_defaults.nivel_homologacao == 'nao_homologado' %}selected{% endif %}>Nao homologado</option>
-                        </select>
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_natureza_administrativa">Natureza administrativa</label>
-                        <select id="iphan_natureza_administrativa" name="iphan_natureza_administrativa">
-                            <option value="municipal" {% if iphan_defaults.natureza_administrativa == 'municipal' %}selected{% endif %}>Municipal</option>
-                            <option value="estadual" {% if iphan_defaults.natureza_administrativa == 'estadual' %}selected{% endif %}>Estadual</option>
-                            <option value="federal" {% if iphan_defaults.natureza_administrativa == 'federal' %}selected{% endif %}>Federal</option>
-                        </select>
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_bem_tombado">Bem tombado</label>
-                        <select id="iphan_bem_tombado" name="iphan_bem_tombado">
-                            <option value="true">Sim</option>
-                            <option value="false" selected>Nao</option>
-                        </select>
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_tombado_como">Tombado como</label>
-                        <select id="iphan_tombado_como" name="iphan_tombado_como">
-                            <option value="individual" {% if iphan_defaults.tombado_como == 'individual' %}selected{% endif %}>Individual</option>
-                            <option value="em_conjunto" {% if iphan_defaults.tombado_como == 'em_conjunto' %}selected{% endif %}>Em conjunto</option>
-                        </select>
-                    </div>
-                    <div class="iphan-form-field iphan-full">
-                        <label for="iphan_tipo_protecao">Tipo de proteção</label>
-                        <input id="iphan_tipo_protecao" name="iphan_tipo_protecao" value="{{ iphan_defaults.tipo_protecao }}">
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_condicao">Condição</label>
-                        <input id="iphan_condicao" name="iphan_condicao" value="{{ iphan_defaults.condicao }}">
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_forma_inscricao">Forma de inscrição (data)</label>
-                        <input id="iphan_forma_inscricao" type="date" name="iphan_forma_inscricao" value="{{ iphan_defaults.forma_inscricao }}">
-                    </div>
-                    <div class="iphan-form-field iphan-full">
-                        <label for="iphan_processo_acautelamento">Processo de acautelamento</label>
-                        <input id="iphan_processo_acautelamento" name="iphan_processo_acautelamento" value="{{ iphan_defaults.processo_acautelamento }}">
-                    </div>
-                    <div class="iphan-form-field iphan-full">
-                        <label for="iphan_legislacao_incidente">Legislação incidente</label>
-                        <textarea id="iphan_legislacao_incidente" name="iphan_legislacao_incidente">{{ iphan_defaults.legislacao_incidente }}</textarea>
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_grupo">Grupo</label>
-                        <input id="iphan_grupo" name="iphan_grupo" value="{{ iphan_defaults.grupo }}">
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_bens_grupo">Bens do grupo</label>
-                        <input id="iphan_bens_grupo" name="iphan_bens_grupo" value="{{ iphan_defaults.bens_grupo }}">
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_numero_sei">Número SEI</label>
-                        <input id="iphan_numero_sei" name="iphan_numero_sei" value="{{ iphan_defaults.numero_sei }}">
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_contato_nome">Contato nome</label>
-                        <input id="iphan_contato_nome" name="iphan_contato_nome" value="{{ iphan_defaults.contato_nome }}">
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_contato_email">Contato email</label>
-                        <input id="iphan_contato_email" type="email" name="iphan_contato_email" value="{{ iphan_defaults.contato_email }}">
-                    </div>
-                    <div class="iphan-form-field">
-                        <label for="iphan_contato_telefone">Contato telefone</label>
-                        <input id="iphan_contato_telefone" name="iphan_contato_telefone" value="{{ iphan_defaults.contato_telefone }}">
-                    </div>
-                </div>
-
-                <div class="iphan-modal-actions">
-                    <button class="btn-outline" type="button" id="iphan-cancel-button">Cancelar</button>
-                    <button class="btn-primary" type="button" id="iphan-confirm-button">Confirmar e aprovar</button>
-                </div>
-            </div>
-        </div>
 
     <section class="split-screen-canvas">
         <div class="comparison-head">

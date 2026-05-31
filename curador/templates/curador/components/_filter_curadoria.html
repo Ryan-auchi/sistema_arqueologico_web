@@ -1,0 +1,56 @@
+{# Painel de filtros avançados da fila de curadoria.
+   Usa as mesmas classes CSS de filter-sidebar.css para consistência visual. #}
+<div id="filter-panel-curadoria"
+     style="display:{% if current_filters.tipo or current_filters.destino or current_filters.conflito or current_filters.meu_responsavel %}block{% else %}none{% endif %};
+            background:#f9f7f5; border:1px solid rgba(210,196,187,0.3); border-radius:4px; padding:20px 24px; margin-bottom:16px;">
+
+    <form method="get" action="{% url 'curadoria-fila' %}" id="form-filtros-curadoria">
+        <input type="hidden" name="q" value="{{ current_filters.q }}">
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:16px; align-items:end;">
+
+            <div class="field-container full" style="margin:0;">
+                <label class="figma-label" for="f-tipo">Tipo de entrada</label>
+                <select id="f-tipo" class="figma-select" name="tipo">
+                    <option value="">Todos</option>
+                    <option value="coleta" {% if current_filters.tipo == "coleta" %}selected{% endif %}>Coleta de campo</option>
+                    <option value="artigo" {% if current_filters.tipo == "artigo" %}selected{% endif %}>Artigo científico</option>
+                </select>
+            </div>
+
+            <div class="field-container full" style="margin:0;">
+                <label class="figma-label" for="f-destino">Destino da coleta</label>
+                <select id="f-destino" class="figma-select" name="destino">
+                    <option value="">Todos</option>
+                    <option value="novo_sitio" {% if current_filters.destino == "novo_sitio" %}selected{% endif %}>Novo sítio</option>
+                    <option value="sitio_existente" {% if current_filters.destino == "sitio_existente" %}selected{% endif %}>Sítio existente</option>
+                </select>
+            </div>
+
+            <div class="field-container full" style="margin:0;">
+                <label class="figma-label" for="f-conflito">Conflitos</label>
+                <select id="f-conflito" class="figma-select" name="conflito">
+                    <option value="">Todos</option>
+                    <option value="sim" {% if current_filters.conflito == "sim" %}selected{% endif %}>Com conflito</option>
+                    <option value="nao" {% if current_filters.conflito == "nao" %}selected{% endif %}>Sem conflito</option>
+                </select>
+            </div>
+
+            <div class="field-container full" style="margin:0;">
+                <label class="figma-label" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" name="meu_responsavel" value="1"
+                           {% if current_filters.meu_responsavel == "1" %}checked{% endif %}>
+                    Sou responsável
+                </label>
+                <p style="font-size:11px; color:#80756d; margin:4px 0 0;">Apenas sítios onde sou curador responsável</p>
+            </div>
+
+            <div style="display:flex; gap:8px; align-items:center; padding-top:16px;">
+                <button type="submit" class="btn-filter" style="background:#312113; color:#fff; border-color:#312113;">Aplicar</button>
+                <a href="{% url 'curadoria-fila' %}{% if current_filters.q %}?q={{ current_filters.q }}{% endif %}"
+                   style="font-size:12px; color:#80756d; text-decoration:underline;">Limpar</a>
+            </div>
+
+        </div>
+    </form>
+</div>

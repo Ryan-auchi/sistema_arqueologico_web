@@ -1,0 +1,289 @@
+{# Modal snapshot — partial incluído em audit_detail.html #}
+<div id="snapshot-overlay"
+     style="display:none; position:fixed; inset:0; background:rgba(30,20,10,0.55); z-index:900; align-items:center; justify-content:center; padding:24px;"
+     aria-hidden="true"
+     onclick="if(event.target===this) fecharSnapshot()">
+
+    <div role="dialog" aria-modal="true" aria-label="Snapshot do registro"
+         style="background:#fff; border-radius:8px; width:100%; max-width:720px; max-height:85vh;
+                display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.22);">
+
+        <!-- cabeçalho -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:24px 28px 18px; border-bottom:1px solid #EAE5E2; flex-shrink:0;">
+            <div>
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#80756d; margin:0 0 4px;">Snapshot do registro auditado</p>
+                <h2 style="font-family:'Newsreader',serif; font-size:22px; font-weight:400; color:#312113; margin:0;">
+                    Auditoria #{{ audit_id }}
+                    <span style="font-size:14px; color:#80756d; font-family:'Inter',sans-serif;">· {{ audit_entry.operacao|default:""|upper }}</span>
+                </h2>
+            </div>
+            <button type="button" onclick="fecharSnapshot()" aria-label="Fechar"
+                    style="background:transparent; border:none; font-size:18px; color:#80756d; cursor:pointer; padding:6px 10px; border-radius:4px; line-height:1;">✕</button>
+        </div>
+
+        <!-- corpo -->
+        <div style="overflow-y:auto; flex:1;">
+
+        {% if audit_entry.operacao == 'Rejeição' %}
+        {# ── Rejeição: nenhuma alteração ─────────────────────────────── #}
+            <div style="padding:48px 28px; text-align:center;">
+                <div style="width:48px; height:48px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#991b1b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                </div>
+                <p style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 8px; font-weight:400;">Entrada rejeitada</p>
+                <p style="font-size:14px; color:#80756d; margin:0 auto; max-width:360px;">
+                    Esta coleta foi rejeitada pela curadoria — nenhuma alteração foi feita no banco de dados.
+                </p>
+            </div>
+
+        {% elif "ArtigoBemMaterial" in audit_entry.entidade_tipo or "ArtigoCientifico" in audit_entry.entidade_tipo %}
+        {# ── Artigo (vínculo criado, artigo novo ou remoção) ─────────── #}
+            <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2); background:rgba(186,26,26,0.03);">
+                <p style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 4px; font-weight:400;">{{ snap.artigo_titulo|default:"Artigo sem título" }}</p>
+                {% if snap.artigo_autores %}<p style="font-size:13px; color:#80756d; margin:0 0 2px;">{{ snap.artigo_autores }}</p>{% endif %}
+                {% if snap.artigo_doi %}<span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;">DOI: {{ snap.artigo_doi }}</span>{% endif %}
+            </div>
+            <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2);">
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Publicação</p>
+                {% if snap.artigo_periodico %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Periódico</span><span style="font-size:14px; color:#312113;">{{ snap.artigo_periodico }}</span></div>{% endif %}
+                {% if snap.artigo_ano_publicacao %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Ano</span><span style="font-size:14px; color:#312113;">{{ snap.artigo_ano_publicacao }}</span></div>{% endif %}
+                {% if snap.artigo_link_acesso %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Link</span><span style="font-size:14px; color:#312113;"><a href="{{ snap.artigo_link_acesso }}" target="_blank" rel="noopener" style="color:#312113;">{{ snap.artigo_link_acesso }}</a></span></div>{% endif %}
+            </div>
+            <div style="padding:20px 28px;">
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Vínculo</p>
+                {% if snap.tipo_mencao %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Tipo de menção</span><span style="font-size:14px; color:#312113;">{{ snap.tipo_mencao }}</span></div>{% endif %}
+                {% if snap.trecho_relevante %}<div style="margin-top:8px;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase; display:block; margin-bottom:6px;">Trecho relevante</span><blockquote style="margin:0; padding:10px 14px; border-left:3px solid #c9b49a; font-style:italic; font-size:14px; color:#4e453e; background:#f9f7f5; border-radius:0 4px 4px 0;">{{ snap.trecho_relevante }}</blockquote></div>{% endif %}
+            </div>
+
+        {% elif audit_entry.operacao == 'exclusao' %}
+        {# ── Exclusão de Bem Material ─────────────────────────────────── #}
+            <div style="padding:20px 28px; background:#fee2e2; border-bottom:1px solid #fecaca; display:flex; align-items:center; gap:14px;">
+                <div style="width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#991b1b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                </div>
+                <div>
+                    <p style="font-family:'Newsreader',serif; font-size:16px; color:#7f1d1d; margin:0 0 2px; font-weight:400;">Registro excluído</p>
+                    <p style="font-size:12px; color:#991b1b; margin:0;">O snapshot abaixo mostra o último estado antes da exclusão.</p>
+                </div>
+            </div>
+            {% if snap.nome_bem or snap.codigo_iphan %}
+            <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2); background:rgba(73,54,39,0.03);">
+                <p style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 4px; font-weight:400;">{{ snap.nome_bem|default:"Sem nome" }}</p>
+                <span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;">{{ snap.codigo_iphan|default:"Código não informado" }}</span>
+                {% if snap.municipio %}<span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;"> · {{ snap.municipio }}{% if snap.uf %}/{{ snap.uf }}{% endif %}</span>{% endif %}
+            </div>
+            {% endif %}
+            {% if snap.natureza or snap.tipo or snap.ano_registro %}
+            <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2);">
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Identificação</p>
+                {% if snap.natureza %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Natureza</span><span style="font-size:14px; color:#312113;">{{ snap.natureza }}</span></div>{% endif %}
+                {% if snap.tipo %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Tipo</span><span style="font-size:14px; color:#312113;">{{ snap.tipo }}</span></div>{% endif %}
+                {% if snap.ano_registro %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Ano de registro</span><span style="font-size:14px; color:#312113;">{{ snap.ano_registro }}</span></div>{% endif %}
+            </div>
+            {% endif %}
+            {% if snap.endereco or snap.municipio or snap.uf or snap.latitude %}
+            <div style="padding:20px 28px;">
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Localização</p>
+                {% if snap.municipio %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Município</span><span style="font-size:14px; color:#312113;">{{ snap.municipio }}</span></div>{% endif %}
+                {% if snap.uf %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Estado (UF)</span><span style="font-size:14px; color:#312113;">{{ snap.uf }}</span></div>{% endif %}
+                {% if snap.latitude or snap.longitude %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Coordenadas</span><span style="font-size:14px; color:#312113; font-family:'Liberation Mono',monospace;">{{ snap.latitude }}, {{ snap.longitude }}</span></div>{% endif %}
+            </div>
+            {% endif %}
+
+        {% else %}
+        {# ── Bem Material ─────────────────────────────────────────────── #}
+
+            {# INSERÇÃO: aviso + view oculta com o que foi criado #}
+            {% if not snap_has_anterior %}
+            <div id="snap-no-anterior" style="padding:48px 28px; text-align:center;">
+                <div style="width:48px; height:48px; background:#f3f4f5; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#80756d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </div>
+                <p style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 8px; font-weight:400;">Sem snapshot anterior</p>
+                <p style="font-size:14px; color:#80756d; margin:0 auto; max-width:320px;">
+                    Este registro foi criado nesta operação — não existia estado anterior.
+                </p>
+            </div>
+            {% endif %}
+
+            {# VIEW A: snapshot anterior (padrão visível em Alteração; oculto em Inserção) #}
+            <div id="snap-view-a" {% if not snap_has_anterior %}hidden{% endif %}>
+                {% if snap.nome_bem or snap.codigo_iphan %}
+                <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2); background:rgba(73,54,39,0.03);">
+                    <p style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 4px; font-weight:400;">{{ snap.nome_bem|default:"Sem nome" }}</p>
+                    <span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;">{{ snap.codigo_iphan|default:"Código não informado" }}</span>
+                    {% if snap.municipio %}<span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;"> · {{ snap.municipio }}{% if snap.uf %}/{{ snap.uf }}{% endif %}</span>{% endif %}
+                </div>
+                {% endif %}
+                {% if snap.descricao_atualizacao %}
+                <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2);">
+                    <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 10px;">Descrição</p>
+                    <p style="font-family:'Liberation Serif',serif; font-size:15px; line-height:1.7; color:#4e453e; margin:0;">{{ snap.descricao_atualizacao }}</p>
+                </div>
+                {% endif %}
+                {% if snap.natureza or snap.tipo or snap.ano_registro or snap.nomes_populares or snap.artefatos %}
+                <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2);">
+                    <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Identificação</p>
+                    {% if snap.natureza %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Natureza</span><span style="font-size:14px; color:#312113;">{{ snap.natureza }}</span></div>{% endif %}
+                    {% if snap.tipo %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Tipo</span><span style="font-size:14px; color:#312113;">{{ snap.tipo }}</span></div>{% endif %}
+                    {% if snap.ano_registro %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Ano de registro</span><span style="font-size:14px; color:#312113;">{{ snap.ano_registro }}</span></div>{% endif %}
+                    {% if snap.nomes_populares %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Nomes populares</span><span style="font-size:14px; color:#312113;">{{ snap.nomes_populares }}</span></div>{% endif %}
+                    {% if snap.publicado != None %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Publicado</span><span style="font-size:14px; color:#312113;">{% if snap.publicado %}Sim{% else %}Não{% endif %}</span></div>{% endif %}
+                    {% if snap.artefatos %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:start;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase; padding-top:2px;">Artefatos</span><span style="display:flex; flex-wrap:wrap; gap:6px;">{% for a in snap.artefatos %}<span style="background:rgba(73,54,39,0.08); border-radius:10px; padding:2px 10px; font-size:11px; font-weight:700; color:#493627;">{{ a }}</span>{% endfor %}</span></div>{% endif %}
+                </div>
+                {% endif %}
+                {% if snap.endereco or snap.municipio or snap.uf or snap.cep or snap.latitude or snap.meios_acesso %}
+                <div style="padding:20px 28px;">
+                    <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Localização</p>
+                    {% if snap.endereco %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Endereço</span><span style="font-size:14px; color:#312113;">{{ snap.endereco }}</span></div>{% endif %}
+                    {% if snap.municipio %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Município</span><span style="font-size:14px; color:#312113;">{{ snap.municipio }}</span></div>{% endif %}
+                    {% if snap.uf %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Estado (UF)</span><span style="font-size:14px; color:#312113;">{{ snap.uf }}</span></div>{% endif %}
+                    {% if snap.cep %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">CEP</span><span style="font-size:14px; color:#312113;">{{ snap.cep }}</span></div>{% endif %}
+                    {% if snap.latitude or snap.longitude %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Coordenadas</span><span style="font-size:14px; color:#312113; font-family:'Liberation Mono',monospace;">{{ snap.latitude }}, {{ snap.longitude }}</span></div>{% endif %}
+                    {% if snap.meios_acesso %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Meios de acesso</span><span style="font-size:14px; color:#312113;">{{ snap.meios_acesso }}</span></div>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            {# VIEW B: estado resultante com mudanças — só para Alteração #}
+            {% if snap_has_anterior %}
+            <div id="snap-view-b" hidden>
+                <div style="padding:10px 28px; background:#eff6ff; border-bottom:1px solid #bfdbfe;">
+                    <span style="font-size:11px; color:#1d4ed8; display:flex; align-items:center; gap:6px;">
+                        <span style="width:10px; height:10px; background:#eff6ff; border:2px solid #93c5fd; border-radius:2px; flex-shrink:0; display:inline-block;"></span>
+                        Campos com fundo azul foram alterados nesta operação
+                    </span>
+                </div>
+                {% if snap_merged.nome_bem or snap_merged.codigo_iphan %}
+                <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2); {% if snap_changed.nome_bem %}background:#eff6ff;{% else %}background:rgba(73,54,39,0.03);{% endif %}">
+                    <p style="font-family:'Newsreader',serif; font-size:18px; margin:0 0 4px; font-weight:400; {% if snap_changed.nome_bem %}color:#1d4ed8;{% else %}color:#312113;{% endif %}">{{ snap_merged.nome_bem|default:"Sem nome" }}</p>
+                    <span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;">{{ snap_merged.codigo_iphan|default:"Código não informado" }}</span>
+                    {% if snap_merged.municipio %}<span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;"> · {{ snap_merged.municipio }}{% if snap_merged.uf %}/{{ snap_merged.uf }}{% endif %}</span>{% endif %}
+                </div>
+                {% endif %}
+                {% if snap_merged.descricao_atualizacao %}
+                <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2); {% if snap_changed.descricao_atualizacao %}background:#eff6ff;{% endif %}">
+                    <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 10px;">Descrição</p>
+                    <p style="font-family:'Liberation Serif',serif; font-size:15px; line-height:1.7; margin:0; {% if snap_changed.descricao_atualizacao %}color:#1d4ed8;{% else %}color:#4e453e;{% endif %}">{{ snap_merged.descricao_atualizacao }}</p>
+                </div>
+                {% endif %}
+                {% if snap_merged.natureza or snap_merged.tipo or snap_merged.ano_registro or snap_merged.nomes_populares or snap_merged.artefatos %}
+                <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2);">
+                    <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Identificação</p>
+                    {% if snap_merged.natureza %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.natureza %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Natureza</span><span style="font-size:14px; {% if snap_changed.natureza %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.natureza }}</span></div>{% endif %}
+                    {% if snap_merged.tipo %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.tipo %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Tipo</span><span style="font-size:14px; {% if snap_changed.tipo %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.tipo }}</span></div>{% endif %}
+                    {% if snap_merged.ano_registro %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.ano_registro %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Ano de registro</span><span style="font-size:14px; {% if snap_changed.ano_registro %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.ano_registro }}</span></div>{% endif %}
+                    {% if snap_merged.nomes_populares %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.nomes_populares %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Nomes populares</span><span style="font-size:14px; {% if snap_changed.nomes_populares %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.nomes_populares }}</span></div>{% endif %}
+                    {% if snap_merged.publicado != None %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.publicado %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Publicado</span><span style="font-size:14px; {% if snap_changed.publicado %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{% if snap_merged.publicado %}Sim{% else %}Não{% endif %}</span></div>{% endif %}
+                    {% if snap_merged.artefatos %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:start; {% if snap_changed.artefatos %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase; padding-top:2px;">Artefatos</span><span style="display:flex; flex-wrap:wrap; gap:6px;">{% for a in snap_merged.artefatos %}<span style="border-radius:10px; padding:2px 10px; font-size:11px; font-weight:700; {% if snap_changed.artefatos %}background:#dbeafe; color:#1d4ed8;{% else %}background:rgba(73,54,39,0.08); color:#493627;{% endif %}">{{ a }}</span>{% endfor %}</span></div>{% endif %}
+                </div>
+                {% endif %}
+                {% if snap_merged.endereco or snap_merged.municipio or snap_merged.uf or snap_merged.cep or snap_merged.latitude or snap_merged.meios_acesso %}
+                <div style="padding:20px 28px;">
+                    <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Localização</p>
+                    {% if snap_merged.endereco %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.endereco %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Endereço</span><span style="font-size:14px; {% if snap_changed.endereco %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.endereco }}</span></div>{% endif %}
+                    {% if snap_merged.municipio %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.municipio %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Município</span><span style="font-size:14px; {% if snap_changed.municipio %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.municipio }}</span></div>{% endif %}
+                    {% if snap_merged.uf %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.uf %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Estado (UF)</span><span style="font-size:14px; {% if snap_changed.uf %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.uf }}</span></div>{% endif %}
+                    {% if snap_merged.cep %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.cep %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">CEP</span><span style="font-size:14px; {% if snap_changed.cep %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.cep }}</span></div>{% endif %}
+                    {% if snap_merged.latitude or snap_merged.longitude %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline; {% if snap_changed.latitude or snap_changed.longitude %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Coordenadas</span><span style="font-size:14px; font-family:'Liberation Mono',monospace; {% if snap_changed.latitude or snap_changed.longitude %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.latitude }}, {{ snap_merged.longitude }}</span></div>{% endif %}
+                    {% if snap_merged.meios_acesso %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:baseline; {% if snap_changed.meios_acesso %}background:#eff6ff; border-radius:4px; padding:4px 6px; margin-left:-6px;{% endif %}"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Meios de acesso</span><span style="font-size:14px; {% if snap_changed.meios_acesso %}color:#1d4ed8; font-weight:600;{% else %}color:#312113;{% endif %}">{{ snap_merged.meios_acesso }}</span></div>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        {% endif %}
+
+        </div>
+
+        <!-- rodapé -->
+        <div style="padding:16px 28px; border-top:1px solid #EAE5E2; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; background:#f9f7f5; border-radius:0 0 8px 8px; gap:12px;">
+            <span style="font-size:12px; color:#80756d; flex:1;">{{ audit_entry.data_hora|date:"d M Y H:i" }} · {{ audit_entry.usuario.nome|default:"Sistema" }}</span>
+
+            {% if audit_entry.operacao != 'Rejeição' and audit_entry.operacao != 'exclusao' and "Artigo" not in audit_entry.entidade_tipo %}
+                {% if snap_has_anterior %}
+                <button type="button" id="snap-toggle-btn" onclick="toggleSnapView()"
+                        style="background:transparent; color:#1d4ed8; border:1px solid #93c5fd; border-radius:4px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                    Ver mudanças
+                </button>
+                {% else %}
+                <button type="button" id="snap-toggle-btn" onclick="toggleSnapView()"
+                        style="background:transparent; color:#312113; border:1px solid rgba(49,33,19,0.25); border-radius:4px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                    Ver o que foi adicionado
+                </button>
+                {% endif %}
+            {% endif %}
+
+            <button type="button" onclick="fecharSnapshot()"
+                    style="background:#312113; color:#fff; border:none; border-radius:4px; padding:8px 20px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirSnapshot() {
+    const el = document.getElementById('snapshot-overlay');
+    el.style.display = 'flex';
+    el.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharSnapshot() {
+    const el = document.getElementById('snapshot-overlay');
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    _resetSnapViews();
+}
+
+function _resetSnapViews() {
+    const noAnterior = document.getElementById('snap-no-anterior');
+    const viewA = document.getElementById('snap-view-a');
+    const viewB = document.getElementById('snap-view-b');
+    const btn   = document.getElementById('snap-toggle-btn');
+    if (noAnterior) {
+        // modo Inserção: volta ao aviso
+        noAnterior.hidden = false;
+        if (viewA) viewA.hidden = true;
+        if (btn)   btn.textContent = 'Ver o que foi adicionado';
+    } else {
+        // modo Alteração: volta ao snapshot anterior
+        if (viewA) viewA.hidden = false;
+        if (viewB) viewB.hidden = true;
+        if (btn)   btn.textContent = 'Ver mudanças';
+    }
+}
+
+function toggleSnapView() {
+    const noAnterior = document.getElementById('snap-no-anterior');
+    const viewA = document.getElementById('snap-view-a');
+    const viewB = document.getElementById('snap-view-b');
+    const btn   = document.getElementById('snap-toggle-btn');
+    const body  = document.querySelector('#snapshot-overlay [style*="overflow-y"]');
+
+    if (noAnterior) {
+        // Inserção: alterna aviso ↔ dados criados
+        const showingMessage = !noAnterior.hidden;
+        noAnterior.hidden = showingMessage;
+        if (viewA) viewA.hidden = !showingMessage;
+        if (btn)   btn.textContent = showingMessage ? 'Voltar ao aviso' : 'Ver o que foi adicionado';
+    } else if (viewA && viewB) {
+        // Alteração: alterna snapshot anterior ↔ estado resultante com mudanças
+        const showingA = !viewA.hidden;
+        viewA.hidden = showingA;
+        viewB.hidden = !showingA;
+        if (btn) btn.textContent = showingA ? 'Ver snapshot anterior' : 'Ver mudanças';
+        if (body && showingA) body.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharSnapshot(); });
+</script>

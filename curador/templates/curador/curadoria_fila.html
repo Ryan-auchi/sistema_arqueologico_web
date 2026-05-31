@@ -21,18 +21,31 @@
 
         <div class="action-bar">
             <form class="search-container" method="get" action="{% url 'curadoria-fila' %}">
+                {% if current_filters.tipo %}<input type="hidden" name="tipo" value="{{ current_filters.tipo }}">{% endif %}
+                {% if current_filters.destino %}<input type="hidden" name="destino" value="{{ current_filters.destino }}">{% endif %}
+                {% if current_filters.conflito %}<input type="hidden" name="conflito" value="{{ current_filters.conflito }}">{% endif %}
+                {% if current_filters.meu_responsavel %}<input type="hidden" name="meu_responsavel" value="1">{% endif %}
                 <div class="search-input-wrapper">
                     <span class="search-icon-fixed" aria-hidden="true"></span>
-                    <input type="text" class="search-input" name="q" value="{{ query }}" placeholder="Buscar por código IPHAN ou nome...">
+                    <input type="text" class="search-input" name="q" value="{{ current_filters.q }}" placeholder="Buscar por código IPHAN, nome, tipo...">
                 </div>
-                <button class="btn-filter" type="submit">Filtrar</button>
+                <button class="btn-filter" type="submit">Buscar</button>
+                <button class="btn-filter" type="button" onclick="toggleFiltrosCuradoria()" style="gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+                    Filtros{% if current_filters.tipo or current_filters.destino or current_filters.conflito or current_filters.meu_responsavel %} <span style="background:#312113;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;">ON</span>{% endif %}
+                </button>
             </form>
 
             <div class="stats-badges">
-                <div class="stats-badge"><span class="dot" style="background:#312113;"></span> {{ total_pendentes }} Total</div>
-                <div class="stats-badge"><span class="dot" style="background:#BA1A1A;"></span> {{ conflitos }} Conflitos</div>
+                <div class="stats-badge"><span class="dot" style="background:#312113;"></span> {{ total_pendentes }} pendentes</div>
+                {% if total_filtrado != total_pendentes %}
+                <div class="stats-badge"><span class="dot" style="background:#1d4ed8;"></span> {{ total_filtrado }} filtrados</div>
+                {% endif %}
+                <div class="stats-badge"><span class="dot" style="background:#BA1A1A;"></span> {{ conflitos }} conflitos</div>
             </div>
         </div>
+
+        {% include "curador/components/_filter_curadoria.html" %}
 
         <div class="table-container">
             <table>
@@ -50,10 +63,12 @@
                     <tr>
                         <td>
                             <div class="record-id">{{ item.codigo_iphan_display }}</div>
-                            {% if item.observacao %}
-                                <div class="conflict-badge">{{ item.observacao|truncatechars:28|upper }}</div>
+                            {% if item.tem_conflito %}
+                                <div class="conflict-badge">{{ item.num_conflitos }} campo{{ item.num_conflitos|pluralize:"s" }} em conflito</div>
+                            {% elif item.bem_material_id %}
+                                <div class="time-ago">Atualização sem conflito</div>
                             {% else %}
-                                <div class="time-ago">Sem conflito detectado</div>
+                                <div class="time-ago">Novo sítio</div>
                             {% endif %}
                         </td>
                         <td class="popular-name">{{ item.nome_display }}</td>
@@ -98,4 +113,13 @@
         </div>
     </main>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleFiltrosCuradoria() {
+    const panel = document.getElementById('filter-panel-curadoria');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+</script>
 {% endblock %}

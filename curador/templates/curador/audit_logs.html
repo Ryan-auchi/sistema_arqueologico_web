@@ -309,21 +309,26 @@
 
         <div class="action-bar">
             <form class="search-container" method="get" action="{% url 'audit-logs' %}">
+                {% if current_filters.filtro %}<input type="hidden" name="filtro" value="{{ current_filters.filtro }}">{% endif %}
+                {% if current_filters.responsavel %}<input type="hidden" name="responsavel" value="{{ current_filters.responsavel }}">{% endif %}
                 <div class="search-input-wrapper">
                     <span class="search-icon-fixed" aria-hidden="true"></span>
-                    <input type="text" class="search-input" name="q" value="{{ query }}" placeholder="Buscar por usuário ou ação...">
+                    <input type="text" class="search-input" name="q" value="{{ current_filters.q }}" placeholder="Buscar por usuário, ação, IPHAN, nome...">
                 </div>
-                <button class="btn-filter" type="submit">
-                    <div style="width:10.5px; height:7px; background:#191C1D;"></div>
-                    Filtrar
+                <button class="btn-filter" type="submit">Buscar</button>
+                <button class="btn-filter" type="button" onclick="toggleFiltrosAudit()" style="gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+                    Filtros{% if current_filters.filtro or current_filters.responsavel %} <span style="background:#312113;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;">ON</span>{% endif %}
                 </button>
             </form>
             <div class="stats-badges">
-                <div class="badge"><span class="dot" style="background:#312113;"></span> {{ total_logs }} Total</div>
-                <div class="badge"><span class="dot" style="background:#BA9F8B;"></span> {{ total_users }} Usuários</div>
-                <div class="badge"><span class="dot" style="background:#16A34A;"></span> {{ sync_status }} Sincronia</div>
+                <div class="badge"><span class="dot" style="background:#312113;"></span> {{ total_logs }} total</div>
+                <div class="badge"><span class="dot" style="background:#BA9F8B;"></span> {{ total_users }} usuários</div>
+                <div class="badge"><span class="dot" style="background:#16A34A;"></span> {{ sync_status }}</div>
             </div>
         </div>
+
+        {% include "curador/components/_filter_audit.html" %}
 
         <div class="table-container">
             <table class="audit-table">
@@ -381,4 +386,13 @@
         </div>
     </main>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleFiltrosAudit() {
+    const panel = document.getElementById('filter-panel-audit');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+</script>
 {% endblock %}

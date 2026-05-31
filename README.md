@@ -16,9 +16,10 @@
 
 Painel web do ecossistema arqueológico. Consome exclusivamente a **[sistema_arqueologico_api](https://github.com/mfeeee/sistema_arqueologico_api)** — não acessa banco de dados diretamente.
 
-Oferece duas frentes de uso:
+Oferece três frentes de uso:
 
-- **Pesquisa pública:** mapa interativo e listagem de sítios arqueológicos cadastrados
+- **Pesquisa pública (guest):** mapa interativo e listagem de sítios arqueológicos acessíveis sem autenticação
+- **Conta de usuário:** criação de conta e recuperação de senha integradas à API via modais no header
 - **Curadoria:** fila de revisão de coletas e submissões de artigos científicos enviadas pelo app mobile, aprovação ou rejeição de registros, seleção de campos a aplicar e histórico completo de auditoria por sítio
 
 ---
@@ -26,7 +27,24 @@ Oferece duas frentes de uso:
 ## Módulos
 
 ### Pesquisa
-Mapa e listagem dos sítios publicados. Permite consulta por localização, tipo e natureza do bem. Os dados são consumidos em tempo real da API com cache local de 60 segundos. O controle de publicação na tela de detalhe do sítio (visível apenas para curador e admin) atualiza o registro via `PATCH /admin/bens-materiais/{id}/publicar`, registra auditoria e invalida o cache imediatamente.
+Mapa e listagem dos sítios. Acessível sem autenticação (guest) — os endpoints da API usam `auth.optional:sanctum`, retornando dados públicos sem token. O token de sessão é aplicado por request nas views de pesquisa para evitar vazamento entre threads.
+
+Os dados são consumidos em tempo real da API com cache local de 60 segundos. O controle de publicação na tela de detalhe do sítio (visível apenas para curador e admin) atualiza o registro via `PATCH /admin/bens-materiais/{id}/publicar`, registra auditoria e invalida o cache imediatamente.
+
+**Filtros da listagem** — sidebar com os seguintes campos, todos aplicados localmente sobre o cache:
+
+| Filtro | Campo pesquisado |
+|---|---|
+| Busca textual | `nome_bem`, `codigo_iphan`, `nomes_populares`, `municipio`, `descricao_atualizacao`, `artefatos` |
+| Estado (UF) | `uf` — match exato |
+| Município | `municipio` — match exato |
+| Natureza | `natureza` — match exato |
+| Tipo | `tipo` — match exato |
+| Artefato | Filtra sítios que contêm o artefato selecionado na lista `artefatos` |
+| Ano de Registro | Faixa de `ano_registro` (de / até) |
+| Mostrar não publicados | Oculto por padrão; ao ativar exibe aviso de que os dados são preliminares |
+
+A paginação preserva todos os filtros ativos nos links de navegação.
 
 A tela de detalhe possui abas que expõem informações complementares do sítio:
 
@@ -38,12 +56,39 @@ A tela de detalhe possui abas que expõem informações complementares do sítio
 
 A aba **Colaboradores** consome `GET /mobile/bens-materiais/{id}/colaboradores`. Retorna uma linha por usuário por tipo de contribuição — um mesmo usuário pode aparecer como "Coleta de campo" e "Artigo científico" se tiver contribuído nos dois fluxos. Se a API retornar erro, a mensagem é exibida na tela (com log `WARNING` no servidor) em vez de falhar silenciosamente.
 
+**Ações administrativas** visíveis apenas para curador e admin (abaixo do controle de publicação):
+
+- **Curador responsável** — exibe o responsável atual pelo sítio e oferece um seletor para alterá-lo. Qualquer curador ou admin pode trocar o responsável; a mudança é registrada em auditoria com os nomes dos envolvidos (não apenas UUIDs). O seletor é populado via `GET /admin/usuarios/curadores`.
+- **Excluir bem material** — botão com confirmação JS que aciona `DELETE /admin/bens-materiais/{id}`. O registro é removido por soft delete (`deleted_at`) e a operação é registrada automaticamente como `exclusao` no log de auditoria.
+
+### Autenticação
+O header expõe um popover de login. Além do login padrão, há suporte a:
+
+- **Criação de conta** — modal centralizado com campos nome, e-mail, senha e confirmação; chama `POST /api/v1/auth/register` e faz login automático
+- **Recuperação de senha** — modal que chama `POST /api/v1/auth/password-reset`; não revela se o e-mail existe ou não
+
+As notificações flash possuem auto-dismiss em 4 segundos e botão ✕ para fechar manualmente.
+
 ### Curadoria
 Fluxo de revisão técnica para curadores e administradores. A fila é **polimórfica**: aceita tanto coletas de campo quanto submissões de artigos científicos enviadas pelo aplicativo móvel.
 
+**Filtros da fila** — painel expansível ativado pelo botão "Filtros" na action bar:
+
+| Filtro | Comportamento |
+|---|---|
+| Busca textual | Pesquisa em código IPHAN, nome, tipo de entrada e nome do usuário |
+| Tipo de entrada | Coleta de campo ou Artigo científico |
+| Destino da coleta | Novo sítio (sem `bem_material_id`) ou Sítio existente (com `bem_material_id`) |
+| Conflitos | Com conflito / Sem conflito — baseado em diferenças reais de campo |
+| Sou responsável | Filtra sítios onde o curador logado é o responsável |
+
+O badge **"X conflitos"** no topo reflete o total de itens com conflito em toda a fila pendente, independentemente dos filtros ativos. O badge **"X filtrados"** aparece apenas quando o subconjunto visível difere do total.
+
+**Detecção de conflito**: um item é marcado como conflito quando pelo menos um campo da coleta proposta difere do valor já existente no bem material oficial (campo com valor anterior não vazio). Campos preenchidos pela primeira vez não contam como conflito. A contagem aparece em cada linha da fila ("X campo(s) em conflito"). Novos sítios (sem bem_material) e artigos nunca têm conflito.
+
 **Revisão de coleta** (`curadoria_revisao`):
 - Comparação campo a campo entre a entrada recebida e o registro oficial
-- Seleção de campos individuais a aceitar
+- Seleção de campos individuais a aceitar — respeitada tanto em `criarSitio` quanto em `atualizarSitio`
 - Controle de publicação do sítio no momento da aprovação
 - Ações: `criarSitio`, `atualizarSitio` ou rejeitar
 
@@ -54,7 +99,30 @@ Fluxo de revisão técnica para curadores e administradores. A fila é **polimó
 - Ações: aprovar vínculo (`aprovar_artigo`) ou rejeitar submissão
 
 ### Auditoria
-Histórico completo de alterações por sítio. A tela de detalhe exibe uma comparação campo a campo entre o estado anterior e os valores aplicados, diferenciando campos alterados de campos de contexto.
+Histórico completo de operações. A listagem (`audit_logs`) exibe labels específicos por tipo de entidade e operação:
+
+| Operação registrada | Label exibido |
+|---|---|
+| Inserção de BemMaterial | INSERÇÃO |
+| Alteração de BemMaterial | ALTERAÇÃO |
+| Exclusão de BemMaterial | EXCLUSAO (badge vermelho) |
+| Criação de vínculo artigo | VÍNCULO-ARTIGO |
+| Remoção de vínculo artigo | REMOÇÃO-ARTIGO |
+| Rejeição de curadoria | REJEIÇÃO |
+
+**Filtros de auditoria** — painel expansível com os seguintes campos:
+
+| Filtro | Comportamento |
+|---|---|
+| Busca textual | Pesquisa em usuário, operação, entidade, target e conteúdo dos snapshots |
+| Tipo de operação | Seletor agrupado: sítios (todos, criação, alteração, exclusão, aprovação/rejeição de coleta) e artigos (vínculos, aprovação/rejeição) — filtra por `entidade_tipo` na API; operação específica aplicada localmente |
+| Responsável pela ação | Busca textual no nome do usuário que realizou a ação |
+
+**Tela de detalhe** (`audit_detail`):
+
+- **Tabela de campos** — para auditorias vinculadas a uma curadoria, exibe os campos da coleta com status individual: `Aprovado` (verde), `Não aplicado` (cinza) ou `Rejeitado` (vermelho). Para auditorias manuais, mantém a comparação antes/depois tradicional.
+- **Barra de resumo** — exibe o resultado da curadoria vinculada (aprovado/rejeitado) com badge colorido. O badge fica vermelho para operações de **Exclusão**.
+- **Modal de snapshot** — exibe o estado anterior do registro em cards por seção. Para operações de **Alteração**, o botão "Ver mudanças" alterna para a visão do estado resultante com campos alterados destacados em azul. Para **Inserção**, o botão "Ver o que foi adicionado" revela os dados criados. Para **Rejeição**, exibe mensagem informando que nenhuma alteração foi feita. Para **Exclusão**, exibe banner vermelho "Registro excluído" com o último estado do sítio antes da deleção — o botão "Ver mudanças" não aparece neste caso.
 
 ---
 
@@ -218,10 +286,11 @@ API_BASE_URL=https://sistemaarqueologicoapi-production.up.railway.app/api/v1
 
 ## Perfis de Acesso
 
-| Perfil | Pesquisa pública | Aba Colaboradores | Fila de curadoria | Auditoria |
-|---|---|---|---|---|
-| `coletor` | ✅ | ✅ | ❌ | ❌ |
-| `curador` | ✅ | ✅ | ✅ | ✅ |
-| `admin` | ✅ | ✅ | ✅ | ✅ |
+| Perfil | Pesquisa pública | Aba Colaboradores | Fila de curadoria | Auditoria | Publicar / Excluir bem | Curador responsável |
+|---|---|---|---|---|---|---|
+| Guest (sem conta) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `coletor` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `curador` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `admin` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 Os perfis são gerenciados pela API — o painel web reflete o perfil retornado no login.

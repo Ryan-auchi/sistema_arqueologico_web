@@ -9,15 +9,19 @@ from django.utils.dateparse import parse_datetime
 
 from api_client.client import (
     ApiError,
+    atualizar_curador_responsavel,
     buscar_artigo_por_doi,
+    excluir_bem_material,
     fetch_all_bens_materiais,
     fetch_artigos_por_bem,
     fetch_auditorias_for_bem,
     fetch_bem_material,
     fetch_colaboradores_por_bem,
+    fetch_curadores,
     invalidate_bens_cache,
     normalize_bem_material,
     remover_vinculo_artigo,
+    set_api_auth_token,
     submeter_artigo,
     toggle_publicado_bem_material,
 )
@@ -64,6 +68,11 @@ def _site_payload(site):
     responsavel = (
         _as_namespace(normalized.get("responsavel") or {}) if isinstance(normalized.get("responsavel"), dict) else {}
     )
+    curador_responsavel = (
+        _as_namespace(normalized.get("curador_responsavel") or {})
+        if isinstance(normalized.get("curador_responsavel"), dict)
+        else {}
+    )
 
     payload = {
         "id": normalized.get("id"),
@@ -105,6 +114,7 @@ def _site_payload(site):
         "deletado_em": _as_datetime(normalized.get("deletado_em")),
         "midias": midias,
         "responsavel": responsavel,
+        "curador_responsavel": curador_responsavel,
         "raw": normalized,
     }
 
@@ -144,14 +154,30 @@ def _site_payload_to_dict(site):
 
 
 def _site_filter(
-    site, *, query="", state="", municipality="", conservation="", legal_level="", nature="", site_type=""
+    site,
+    *,
+    query="",
+    state="",
+    municipality="",
+    nature="",
+    site_type="",
+    artefato="",
+    ano_min="",
+    ano_max="",
+    show_unpublished=False,
 ):
+    if not show_unpublished and not site.publicado:
+        return False
+
+    artefatos_str = " ".join(str(a) for a in (site.artefatos or []))
     search_target = " ".join(
         [
-            str(site.name or ""),
-            str(site.code or ""),
+            str(site.nome_bem or ""),
+            str(site.codigo_iphan or ""),
+            str(site.nomes_populares or ""),
             str(site.municipality or ""),
-            str(site.summary or ""),
+            str(site.descricao_atualizacao or ""),
+            artefatos_str,
         ]
     ).lower()
 
@@ -170,6 +196,26 @@ def _site_filter(
     if site_type and str(site.raw.get("tipo") or "").lower() != site_type.lower():
         return False
 
+    if artefato:
+        artefatos = [str(a).lower() for a in (site.artefatos or [])]
+        if artefato.lower() not in artefatos:
+            return False
+
+    ano = site.ano_registro
+    if ano_min:
+        try:
+            if not ano or int(ano) < int(ano_min):
+                return False
+        except (ValueError, TypeError):
+            pass
+
+    if ano_max:
+        try:
+            if not ano or int(ano) > int(ano_max):
+                return False
+        except (ValueError, TypeError):
+            pass
+
     return True
 
 
@@ -178,60 +224,72 @@ def _filtered_sites(request):
     query = params.get("q", "").strip()
     state = params.get("state", "").strip()
     municipality = params.get("municipality", "").strip()
-    conservation = params.get("conservation", "").strip()
-    legal_level = params.get("legal_level", "").strip()
     nature = params.get("nature", "").strip()
     site_type = params.get("type", "").strip()
+    artefato = params.get("artefato", "").strip()
+    ano_min = params.get("ano_min", "").strip()
+    ano_max = params.get("ano_max", "").strip()
+    show_unpublished = params.get("show_unpublished", "") == "1"
 
     try:
-        sites = [_site_payload(site) for site in fetch_all_bens_materiais()]
+        all_sites = [_site_payload(site) for site in fetch_all_bens_materiais()]
     except ApiError:
-        sites = []
+        all_sites = []
 
     filtered = [
         site
-        for site in sites
+        for site in all_sites
         if _site_filter(
             site,
             query=query,
             state=state,
             municipality=municipality,
-            conservation=conservation,
-            legal_level=legal_level,
             nature=nature,
             site_type=site_type,
+            artefato=artefato,
+            ano_min=ano_min,
+            ano_max=ano_max,
+            show_unpublished=show_unpublished,
         )
     ]
 
-    return filtered, {
-        "conservation": conservation,
-        "legal_level": legal_level,
+    return filtered, all_sites, {
         "nature": nature,
         "state": state,
         "municipality": municipality,
         "type": site_type,
+        "artefato": artefato,
+        "ano_min": ano_min,
+        "ano_max": ano_max,
+        "show_unpublished": "1" if show_unpublished else "",
         "q": query,
     }
 
 
-def _filter_options(sites):
-    states = sorted({site.state for site in sites if site.state})
-    municipalities = sorted({site.municipality for site in sites if site.municipality})
-    natures = sorted({site.raw.get("natureza") for site in sites if site.raw.get("natureza")})
-    types = sorted({site.raw.get("tipo") for site in sites if site.raw.get("tipo")})
+def _filter_options(all_sites):
+    states = sorted({site.state for site in all_sites if site.state})
+    municipalities = sorted({site.municipality for site in all_sites if site.municipality})
+    natures = sorted({site.raw.get("natureza") for site in all_sites if site.raw.get("natureza")})
+    types = sorted({site.raw.get("tipo") for site in all_sites if site.raw.get("tipo")})
 
-    municipality_options = [("", "Todos os municípios")] + [(value, value.title()) for value in municipalities]
-    nature_options = [(value, value.title()) for value in natures]
-    type_options = [(value, value.title()) for value in types]
+    artefatos: set[str] = set()
+    for site in all_sites:
+        for a in site.artefatos or []:
+            if a:
+                artefatos.add(str(a))
 
-    return states, municipality_options, [], [], nature_options, type_options
+    municipality_options = [("", "Todos os municípios")] + [(v, v.title()) for v in municipalities]
+    nature_options = [(v, v.title()) for v in natures]
+    type_options = [(v, v.title()) for v in types]
+    artefato_options = [(v, v.title()) for v in sorted(artefatos)]
+
+    return states, municipality_options, nature_options, type_options, artefato_options
 
 
 def pesquisa_mapa(request):
-    sites, current_filters = _filtered_sites(request)
-    state_options, municipality_options, conservation_options, legal_level_options, nature_options, type_options = (
-        _filter_options(sites)
-    )
+    set_api_auth_token(request.session.get("api_auth_token", ""))
+    sites, all_sites, current_filters = _filtered_sites(request)
+    state_options, municipality_options, nature_options, type_options, artefato_options = _filter_options(all_sites)
 
     return render(
         request,
@@ -240,11 +298,10 @@ def pesquisa_mapa(request):
             "nav_active": "mapa",
             "sites": sites,
             "sites_json_url": "/api/sitios/",
-            "conservation_options": conservation_options,
             "municipality_options": municipality_options,
-            "legal_level_options": legal_level_options,
             "nature_options": nature_options,
             "type_options": type_options,
+            "artefato_options": artefato_options,
             "state_options": state_options,
             "current_filters": current_filters,
         },
@@ -252,12 +309,14 @@ def pesquisa_mapa(request):
 
 
 def pesquisa_lista(request):
-    sites, current_filters = _filtered_sites(request)
+    set_api_auth_token(request.session.get("api_auth_token", ""))
+    sites, all_sites, current_filters = _filtered_sites(request)
     paginator = Paginator(sites, 6)
     page_obj = paginator.get_page(request.GET.get("page"))
+    state_options, municipality_options, nature_options, type_options, artefato_options = _filter_options(all_sites)
 
-    state_options, municipality_options, conservation_options, legal_level_options, nature_options, type_options = (
-        _filter_options(sites)
+    filter_qs = "&".join(
+        f"{k}={v}" for k, v in current_filters.items() if v
     )
 
     return render(
@@ -267,22 +326,31 @@ def pesquisa_lista(request):
             "nav_active": "lista",
             "page_obj": page_obj,
             "paginator_count": paginator.count,
-            "conservation_options": conservation_options,
             "municipality_options": municipality_options,
-            "legal_level_options": legal_level_options,
             "nature_options": nature_options,
             "type_options": type_options,
+            "artefato_options": artefato_options,
             "state_options": state_options,
             "current_filters": current_filters,
+            "filter_qs": filter_qs,
         },
     )
 
 
 def site_detail(request, sitio_id):
+    set_api_auth_token(request.session.get("api_auth_token", ""))
     try:
         current_site = _site_payload(fetch_bem_material(sitio_id))
     except ApiError:
         raise Http404("Sítio não encontrado")
+
+    is_curador_or_admin = (
+        request.user.is_authenticated
+        and (
+            request.user.is_superuser
+            or getattr(request.user, "perfil", None) in ("admin", "curador")
+        )
+    )
 
     if request.method == "POST":
         action = request.POST.get("action", "")
@@ -336,6 +404,34 @@ def site_detail(request, sitio_id):
                 _messages.error(request, f"Não foi possível remover o vínculo: {exc}")
             return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
+        elif action == "atualizar_curador_responsavel":
+            if not is_curador_or_admin:
+                raise Http404
+            curador_id = request.POST.get("curador_responsavel_id") or None
+            try:
+                updated_site = atualizar_curador_responsavel(sitio_id, curador_id)
+                current_site = _site_payload(updated_site)
+                from django.contrib import messages as _messages
+                _messages.success(request, "Curador responsável atualizado com sucesso.")
+            except ApiError as exc:
+                from django.contrib import messages as _messages
+                _messages.error(request, f"Não foi possível atualizar o curador responsável: {exc}")
+            return redirect("pesquisa-detalhe", sitio_id=sitio_id)
+
+        elif action == "excluir_bem":
+            if not is_curador_or_admin:
+                raise Http404
+            try:
+                excluir_bem_material(sitio_id)
+                invalidate_bens_cache()
+                from django.contrib import messages as _messages
+                _messages.success(request, "Bem material excluído com sucesso.")
+                return redirect("pesquisa-lista")
+            except ApiError as exc:
+                from django.contrib import messages as _messages
+                _messages.error(request, f"Não foi possível excluir o bem material: {exc}")
+                return redirect("pesquisa-detalhe", sitio_id=sitio_id)
+
     first_image = None
     for media_item in current_site.midias.all():
         if getattr(media_item, "tipo", "") == "imagem" and getattr(media_item, "url", ""):
@@ -357,27 +453,25 @@ def site_detail(request, sitio_id):
     except ApiError:
         artigos = []
 
-    is_curador_or_admin = (
-        request.user.is_authenticated
-        and (
-            request.user.is_superuser
-            or getattr(request.user, "perfil", None) in ("admin", "curador")
-        )
-    )
-
     colaboradores: list = []
     colaboradores_erro: str = ""
-    if request.user.is_authenticated:
+    try:
+        colaboradores = fetch_colaboradores_por_bem(sitio_id)
+    except ApiError as _colabs_exc:
+        logger.warning(
+            "colaboradores: API error for bem=%s — %s (HTTP %s)",
+            sitio_id,
+            _colabs_exc.message,
+            _colabs_exc.status_code,
+        )
+        colaboradores_erro = f"HTTP {_colabs_exc.status_code}: {_colabs_exc.message}"
+
+    curadores_list: list = []
+    if is_curador_or_admin:
         try:
-            colaboradores = fetch_colaboradores_por_bem(sitio_id)
-        except ApiError as _colabs_exc:
-            logger.warning(
-                "colaboradores: API error for bem=%s — %s (HTTP %s)",
-                sitio_id,
-                _colabs_exc.message,
-                _colabs_exc.status_code,
-            )
-            colaboradores_erro = f"HTTP {_colabs_exc.status_code}: {_colabs_exc.message}"
+            curadores_list = fetch_curadores()
+        except ApiError:
+            pass
 
     site_geometry_geojson = ""
     if current_site.geometry:
@@ -400,6 +494,7 @@ def site_detail(request, sitio_id):
             "colaboradores": colaboradores,
             "colaboradores_erro": colaboradores_erro,
             "is_curador_or_admin": is_curador_or_admin,
+            "curadores_list": curadores_list,
         },
     )
 
@@ -414,7 +509,7 @@ def api_buscar_doi(request):
 
 
 def api_sites(request):
-    sites, current_filters = _filtered_sites(request)
+    sites, _all, current_filters = _filtered_sites(request)
 
     return JsonResponse(
         {

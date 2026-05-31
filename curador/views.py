@@ -121,6 +121,15 @@ def _field_label(field_name: str) -> str:
         "ano_registro": "Ano de registro",
         "descricao_atualizacao": "Descrição / Atualização",
         "publicado": "Publicado",
+        # ArtigoBemMaterial
+        "artigo_titulo": "Título",
+        "artigo_autores": "Autores",
+        "artigo_doi": "DOI",
+        "artigo_periodico": "Periódico",
+        "artigo_ano_publicacao": "Ano de publicação",
+        "artigo_link_acesso": "Link de acesso",
+        "tipo_mencao": "Tipo de menção",
+        "trecho_relevante": "Trecho relevante",
     }
     return labels.get(field_name, field_name.replace("_", " ").title())
 
@@ -159,6 +168,7 @@ def _curadoria_item(raw: dict) -> SimpleNamespace:
         tipo_label = "Coleta de campo"
 
     status_display = _status_label(raw.get("status"))
+    num_conflitos = _count_field_conflicts(raw) if entidade_tipo == "coleta" else 0
 
     return _namespace(
         {
@@ -168,6 +178,8 @@ def _curadoria_item(raw: dict) -> SimpleNamespace:
             "codigo_iphan_display": iphan,
             "nome_display": nome,
             "observacao": raw.get("observacao") or "",
+            "num_conflitos": num_conflitos,
+            "tem_conflito": num_conflitos > 0,
             "criado_em": _to_datetime(raw.get("created_at") or raw.get("data_avaliacao")),
             "status": raw.get("status") or "pendente",
             "acao_resultante": raw.get("acao_resultante") or "",
@@ -286,6 +298,23 @@ def _build_comparisons(curadoria_raw: dict) -> list[dict]:
     return comparisons
 
 
+def _count_field_conflicts(curadoria_raw: dict) -> int:
+    """
+    Conta campos que diferem entre a coleta e o registro oficial.
+    Um conflito real é quando o campo já existia no bem e o valor proposto é diferente.
+    Retorna 0 para novos sítios (sem bem_material) — lá não há conflito, só inserção.
+    """
+    bem = curadoria_raw.get("bem_material") or {}
+    if not bem:
+        return 0
+
+    try:
+        comparisons = _build_comparisons(curadoria_raw)
+        return sum(1 for c in comparisons if c["is_different"] and not c["is_new_field"])
+    except Exception:
+        return 0
+
+
 def _audit_entry(raw: dict) -> SimpleNamespace:
     """Transforma um dict de auditoria da API em namespace."""
     usuario = _normalize_user(raw.get("usuario") or {})
@@ -321,10 +350,11 @@ def _op_class(operacao: str) -> str:
 
 # Campos que aparecem sempre no detalhe de auditoria (contexto do registro),
 # mesmo que não tenham sido modificados nessa operação.
-_AUDIT_ALWAYS_SHOW = {"nome_bem", "natureza", "tipo", "publicado"}
+_AUDIT_ALWAYS_SHOW = {"nome_bem", "natureza", "tipo", "publicado", "artigo_titulo"}
 
 # Ordem preferencial de exibição dos campos na tabela de auditoria.
 _AUDIT_FIELD_ORDER = [
+    # BemMaterial
     "nome_bem",
     "natureza",
     "tipo",
@@ -340,7 +370,97 @@ _AUDIT_FIELD_ORDER = [
     "longitude",
     "ano_registro",
     "descricao_atualizacao",
+    # ArtigoBemMaterial
+    "artigo_titulo",
+    "artigo_autores",
+    "artigo_doi",
+    "artigo_periodico",
+    "artigo_ano_publicacao",
+    "artigo_link_acesso",
+    "tipo_mencao",
+    "trecho_relevante",
 ]
+
+
+_SNAP_FIELDS = [
+    # BemMaterial
+    "nome_bem", "codigo_iphan", "nomes_populares", "natureza", "tipo",
+    "artefatos", "publicado", "ano_registro", "descricao_atualizacao",
+    "municipio", "uf", "cep", "endereco", "latitude", "longitude", "meios_acesso",
+    # ArtigoBemMaterial
+    "artigo_titulo", "artigo_autores", "artigo_doi", "artigo_periodico",
+    "artigo_ano_publicacao", "artigo_link_acesso", "tipo_mencao", "trecho_relevante",
+]
+
+_ENTITY_ARTIGO = "ArtigoBemMaterial"
+
+# Campos da coleta que queremos listar na visão de "coleta vs aprovado".
+_BEM_COLETA_FIELDS = [
+    "nome_bem", "natureza", "tipo", "nomes_populares", "artefatos",
+    "meios_acesso", "uf", "municipio", "cep", "endereco",
+    "latitude", "longitude", "ano_registro", "descricao_atualizacao",
+]
+
+
+def _build_merged_snap(audit_ns) -> tuple[SimpleNamespace, SimpleNamespace]:
+    """
+    Retorna (snap_merged, snap_changed).
+
+    snap_merged : estado resultante — valor_anterior com valor_novo sobreposto.
+    snap_changed: namespace de booleanos (True = campo veio do valor_novo).
+
+    Para Inserção (valor_anterior nulo): snap_merged = valor_novo, tudo False.
+    Para Alteração: campos de valor_novo aparecem destacados (True).
+    """
+    def _as_dict(v):
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, SimpleNamespace):
+            return vars(v)
+        return {}
+
+    before = _as_dict(getattr(audit_ns, "valor_anterior", {}))
+    after  = _as_dict(getattr(audit_ns, "valor_novo",    {}))
+    base   = before if before else after
+
+    merged:  dict = {}
+    changed: dict = {}
+
+    for f in _SNAP_FIELDS:
+        in_novo = f in after and after.get(f) is not None
+        if in_novo:
+            merged[f]  = after[f]
+            changed[f] = bool(before)   # True só se havia estado anterior
+        else:
+            merged[f]  = base.get(f, None)
+            changed[f] = False
+
+    return _namespace(merged), _namespace(changed)
+
+
+def _build_audit_snap(audit_ns) -> SimpleNamespace:
+    """
+    Retorna um SimpleNamespace com todos os campos do snapshot normalizados.
+
+    Prioridade: valor_anterior (snapshot completo para Alteração/Exclusão).
+    Fallback:   valor_novo (snapshot para Inserção, onde anterior é null).
+    Campos ausentes ficam como None — nunca levantam VariableDoesNotExist no template.
+    """
+    def _as_dict(v):
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, SimpleNamespace):
+            return vars(v)
+        return {}
+
+    before = _as_dict(getattr(audit_ns, "valor_anterior", {}))
+    after = _as_dict(getattr(audit_ns, "valor_novo", {}))
+
+    # Usa valor_anterior se tiver dados; senão cai em valor_novo (caso Inserção).
+    base = before if before else after
+    # Complementa campos ausentes com valor_novo como fallback secundário.
+    merged = {f: base.get(f, after.get(f, None)) for f in _SNAP_FIELDS}
+    return _namespace(merged)
 
 
 def _field_comparisons_from_audit(audit_ns) -> list[dict]:
@@ -404,14 +524,23 @@ def _field_comparisons_from_audit(audit_ns) -> list[dict]:
 def curadoria_fila(request):
     """
     Lista curadorias com status 'pendente' vindas da API.
-
-    A API já filtra por pendente em GET /admin/curadorias.
-    O filtro local de query é apenas para busca no conjunto retornado.
+    Filtros aplicados localmente após fetch completo.
     """
     query = request.GET.get("q", "").strip().lower()
+    filtro_tipo = request.GET.get("tipo", "").strip()
+    filtro_destino = request.GET.get("destino", "").strip()
+    filtro_conflito = request.GET.get("conflito", "").strip()
+    filtro_meu = request.GET.get("meu_responsavel", "").strip() == "1"
+
+    current_filters = {
+        "q": request.GET.get("q", "").strip(),
+        "tipo": filtro_tipo,
+        "destino": filtro_destino,
+        "conflito": filtro_conflito,
+        "meu_responsavel": "1" if filtro_meu else "",
+    }
 
     try:
-        # fetch_all_curadorias já pagina a API e retorna todos os registros.
         curadorias = [
             _curadoria_item(item)
             for item in fetch_all_curadorias()
@@ -421,14 +550,60 @@ def curadoria_fila(request):
         curadorias = []
         messages.warning(request, "Não foi possível carregar as curadorias da API.")
 
+    total_antes_filtro = len(curadorias)
+    total_conflitos = len([c for c in curadorias if c.tem_conflito])
+
+    # -- busca textual
     if query:
+        def _usuario_nome(c):
+            u = c.usuario
+            if not u:
+                return ""
+            if isinstance(u, dict):
+                return u.get("nome") or u.get("name") or ""
+            return getattr(u, "nome", None) or getattr(u, "name", "") or ""
+
         curadorias = [
-            c
-            for c in curadorias
+            c for c in curadorias
             if query in str(c.codigo_iphan_display).lower()
             or query in str(c.nome_display).lower()
             or query in str(c.observacao).lower()
+            or query in str(c.tipo_label).lower()
+            or query in _usuario_nome(c).lower()
         ]
+
+    # -- tipo: coleta ou artigo
+    if filtro_tipo == "coleta":
+        curadorias = [c for c in curadorias if c.entidade_tipo == "coleta"]
+    elif filtro_tipo == "artigo":
+        curadorias = [c for c in curadorias if c.entidade_tipo == "submissao_artigo"]
+
+    # -- destino: novo sítio (sem bem_material_id) ou sítio existente (com)
+    if filtro_destino == "novo_sitio":
+        curadorias = [c for c in curadorias if not c.bem_material_id]
+    elif filtro_destino == "sitio_existente":
+        curadorias = [c for c in curadorias if c.bem_material_id]
+
+    # -- conflito (baseado em diferenças reais de campo, não na observação do curador)
+    if filtro_conflito == "sim":
+        curadorias = [c for c in curadorias if c.tem_conflito]
+    elif filtro_conflito == "nao":
+        curadorias = [c for c in curadorias if not c.tem_conflito]
+
+    # -- responsável: filtra sítios onde o usuário logado é curador responsável
+    if filtro_meu:
+        user_email = getattr(request.user, "email", "")
+        def _is_meu(c):
+            bem = c.bem_material
+            if not bem:
+                return False
+            resp = bem.get("curador_responsavel") if isinstance(bem, dict) else getattr(bem, "curador_responsavel", None)
+            if not resp:
+                return False
+            if isinstance(resp, dict):
+                return resp.get("email") == user_email
+            return getattr(resp, "email", None) == user_email
+        curadorias = [c for c in curadorias if _is_meu(c)]
 
     paginator = Paginator(curadorias, 10)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -439,9 +614,10 @@ def curadoria_fila(request):
         {
             "nav_active": "curadoria",
             "page_obj": page_obj,
-            "query": request.GET.get("q", "").strip(),
-            "total_pendentes": len(curadorias),
-            "conflitos": len([c for c in curadorias if c.observacao]),
+            "current_filters": current_filters,
+            "total_pendentes": total_antes_filtro,
+            "total_filtrado": len(curadorias),
+            "conflitos": total_conflitos,
         },
     )
 
@@ -572,47 +748,34 @@ def curadoria_revisao(request, curadoria_id):
             if acao == "atualizarSitio":
                 payload["bem_material_id"] = bem_id
 
-                # Campos selecionados individualmente pelo curador no template.
-                # selected_fields é um JSON array de nomes de campos (ex.: ["nome_bem","municipio"]).
-                try:
-                    selected_field_names = json.loads(request.POST.get("selected_fields", "[]"))
-                    if not isinstance(selected_field_names, list):
-                        selected_field_names = []
-                except (ValueError, TypeError):
+            # Campos selecionados pelo curador — aplicado tanto em criarSitio
+            # quanto em atualizarSitio para respeitar a seleção do curador.
+            _all_fields = [
+                "nome_bem", "nomes_populares", "natureza", "tipo", "artefatos",
+                "meios_acesso", "uf", "municipio", "cep", "endereco",
+                "latitude", "longitude", "ano_registro", "descricao_atualizacao",
+            ]
+
+            try:
+                selected_field_names = json.loads(request.POST.get("selected_fields", "[]"))
+                if not isinstance(selected_field_names, list):
                     selected_field_names = []
+            except (ValueError, TypeError):
+                selected_field_names = []
 
-                incoming = _incoming_data(curadoria_raw)
+            incoming = _incoming_data(curadoria_raw)
 
-                _all_fields = [
-                    "nome_bem",
-                    "nomes_populares",
-                    "natureza",
-                    "tipo",
-                    "artefatos",
-                    "meios_acesso",
-                    "uf",
-                    "municipio",
-                    "cep",
-                    "endereco",
-                    "latitude",
-                    "longitude",
-                    "ano_registro",
-                    "descricao_atualizacao",
-                ]
+            if selected_field_names:
+                campos = {
+                    f: incoming.get(f)
+                    for f in selected_field_names
+                    if f in incoming and incoming.get(f) not in (None, "", [])
+                }
+            else:
+                campos = {f: incoming.get(f) for f in _all_fields if incoming.get(f) not in (None, "", [])}
 
-                if selected_field_names:
-                    # Apenas os campos que o curador aceitou explicitamente.
-                    campos = {
-                        f: incoming.get(f)
-                        for f in selected_field_names
-                        if f in incoming and incoming.get(f) not in (None, "", [])
-                    }
-                else:
-                    # Nenhum campo específico selecionado → aplica todos não-vazios.
-                    campos = {f: incoming.get(f) for f in _all_fields if incoming.get(f) not in (None, "", [])}
-
-                if campos:
-                    payload["campos"] = campos
+            if campos:
+                payload["campos"] = campos
 
         else:
             messages.error(request, "Ação desconhecida.")
@@ -688,24 +851,48 @@ def curadoria_revisao(request, curadoria_id):
             "audit_entries": audit_entries,
             "merged": request.GET.get("merged") == "1",
             "default_published": bool(official_site_raw.get("publicado")) if official_site_raw else False,
-            "requires_iphan_form": not official_record_exists,
         },
     )
+
+
+_AUDIT_ENTIDADE_MAP = {
+    "criacao_sitio":       "App\\Models\\BemMaterial",
+    "exclusao_sitio":      "App\\Models\\BemMaterial",
+    "alteracao":           "App\\Models\\BemMaterial",
+    "sitios":              "App\\Models\\BemMaterial",
+    "artigos":             "App\\Models\\ArtigoBemMaterial",
+    "aprovacoes_sitio":    "App\\Models\\Curadoria",
+    "aprovacoes_artigo":   "App\\Models\\SubmissaoArtigo",
+}
+
+_AUDIT_OP_FILTER = {
+    "criacao_sitio":  lambda op: "inser" in op.lower(),
+    "exclusao_sitio": lambda op: "exclus" in op.lower(),
+    "alteracao":      lambda op: "altera" in op.lower(),
+}
 
 
 @curador_or_admin_required
 def audit_logs(request):
     """
     Lista paginada de auditorias via GET /admin/auditorias.
-
-    A API retorna 50 registros por página ordenados por data_hora DESC.
-    A paginação aqui segue exatamente a paginação da API.
+    Filtros de tipo enviados para a API; filtros de operação aplicados localmente.
     """
     query = request.GET.get("q", "").strip().lower()
+    filtro = request.GET.get("filtro", "").strip()
+    responsavel_q = request.GET.get("responsavel", "").strip().lower()
     page = max(1, int(request.GET.get("page", 1) or 1))
 
+    current_filters = {
+        "q": request.GET.get("q", "").strip(),
+        "filtro": filtro,
+        "responsavel": request.GET.get("responsavel", "").strip(),
+    }
+
+    entidade_tipo_param = _AUDIT_ENTIDADE_MAP.get(filtro)
+
     try:
-        items, meta = list_auditorias(page=page)
+        items, meta = list_auditorias(page=page, entidade_tipo=entidade_tipo_param)
     except ApiError:
         items, meta = [], {"total": 0, "page": 1, "pages": 1, "per_page": 50}
 
@@ -716,20 +903,45 @@ def audit_logs(request):
         before = item.get("valor_anterior") or {}
         after = item.get("valor_novo") or {}
 
+        entidade_tipo = item.get("entidade_tipo") or ""
+        is_artigo = _ENTITY_ARTIGO in entidade_tipo
+        is_curadoria = "Curadoria" in entidade_tipo
+
+        # Labels especiais por tipo de entidade + operação.
+        op_lower = op.lower()
+        if is_artigo and "remo" in op_lower:
+            op_label = "REMOÇÃO-ARTIGO"
+        elif is_artigo and "inser" in op_lower:
+            op_label = "VÍNCULO-ARTIGO"
+        elif is_curadoria and "rejei" in op_lower:
+            op_label = "REJEIÇÃO"
+        else:
+            op_label = op.replace("_", " ").upper() or "ATUALIZAR"
+
+        # Target legível.
+        artigo_titulo = (before or after).get("artigo_titulo") if isinstance(before or after, dict) else None
+        nome_bem = (before or after).get("nome_bem") if isinstance(before or after, dict) else None
+        if is_artigo and artigo_titulo:
+            target = _truncate(artigo_titulo, 60)
+        elif is_curadoria and nome_bem:
+            target = _truncate(nome_bem, 60)
+        else:
+            target = (
+                f"{entidade_tipo} #{item.get('entidade_id')}"
+                if item.get("entidade_id")
+                else entidade_tipo
+            )
+
         entries.append(
             {
                 "audit_id": item.get("id"),
                 "created_at": _to_datetime(item.get("data_hora") or item.get("created_at")),
                 "user_name": user.get("nome") or user.get("name") or user.get("email") or "Sistema",
                 "operation": op,
-                "operation_label": op.replace("_", " ").upper() or "ATUALIZAR",
+                "operation_label": op_label,
                 "operation_class": _op_class(op),
-                "entity": item.get("entidade_tipo"),
-                "target": (
-                    f"{item.get('entidade_tipo')} #{item.get('entidade_id')}"
-                    if item.get("entidade_id")
-                    else item.get("entidade_tipo")
-                ),
+                "entity": entidade_tipo,
+                "target": target,
                 "before": before,
                 "after": after,
                 "before_preview": _truncate(json.dumps(before, ensure_ascii=False)),
@@ -737,18 +949,27 @@ def audit_logs(request):
             }
         )
 
-    # Filtro local por query (busca no conjunto retornado pela API).
+    # -- filtro de operação (client-side, complementar ao filtro de entidade da API)
+    if filtro in _AUDIT_OP_FILTER:
+        op_fn = _AUDIT_OP_FILTER[filtro]
+        entries = [e for e in entries if op_fn(e["operation"])]
+
+    # -- busca textual
     if query:
         entries = [
-            e
-            for e in entries
+            e for e in entries
             if query in str(e["user_name"]).lower()
             or query in str(e["operation_label"]).lower()
             or query in str(e["entity"]).lower()
             or query in str(e["target"]).lower()
+            or query in str(e.get("before_preview") or "").lower()
+            or query in str(e.get("after_preview") or "").lower()
         ]
 
-    # Paginação reflete exatamente o que a API retornou.
+    # -- filtro por responsável (nome do usuário)
+    if responsavel_q:
+        entries = [e for e in entries if responsavel_q in str(e["user_name"]).lower()]
+
     paginator = Paginator(entries, meta.get("per_page", 50))
     page_obj = paginator.get_page(meta.get("page", 1))
 
@@ -758,11 +979,10 @@ def audit_logs(request):
         {
             "nav_active": "audit",
             "page_obj": page_obj,
-            "query": request.GET.get("q", "").strip(),
+            "current_filters": current_filters,
             "total_logs": meta.get("total", len(entries)),
             "sync_status": "NOMINAL",
             "total_users": len({e["user_name"] for e in entries}),
-            # Paginação da API (para os links anterior/próximo no template).
             "api_page": meta.get("page", 1),
             "api_pages": meta.get("pages", 1),
         },
@@ -786,19 +1006,65 @@ def audit_detail(request, audit_id):
     audit_ns = _audit_entry(raw)
 
     # Tenta enriquecer com dados da curadoria, se vinculada.
+    curadoria_raw_full: dict = {}
     if raw.get("curadoria_id"):
         try:
-            curadoria_raw = fetch_curadoria(raw["curadoria_id"])
+            curadoria_raw_full = fetch_curadoria(raw["curadoria_id"])
             audit_ns.curadoria = _namespace(
                 {
-                    "observacao": curadoria_raw.get("observacao") or "",
-                    "status": curadoria_raw.get("status") or "",
+                    "observacao": curadoria_raw_full.get("observacao") or "",
+                    "status": curadoria_raw_full.get("status") or "",
                 }
             )
         except ApiError:
             audit_ns.curadoria = _namespace({"observacao": "", "status": ""})
 
     comparisons = _field_comparisons_from_audit(audit_ns)
+    snap = _build_audit_snap(audit_ns)
+    snap_merged, snap_changed = _build_merged_snap(audit_ns)
+
+    # valor_anterior é null em operações de Inserção — não existe snapshot anterior.
+    raw_anterior = raw.get("valor_anterior")
+    snap_has_anterior = bool(raw_anterior) if raw_anterior is not None else False
+
+    # Para auditorias de BemMaterial ou Rejeição com curadoria vinculada,
+    # monta a lista de campos da coleta com indicação de aprovação por campo.
+    field_status: list[dict] | None = None
+    entidade_tipo = raw.get("entidade_tipo") or ""
+    is_bem_material   = curadoria_raw_full and "BemMaterial" in entidade_tipo and _ENTITY_ARTIGO not in entidade_tipo
+    is_rejeicao       = curadoria_raw_full and "Curadoria"   in entidade_tipo
+
+    if is_bem_material or is_rejeicao:
+        try:
+            incoming = _incoming_data(curadoria_raw_full)
+            valor_novo = raw.get("valor_novo") or {}
+            if isinstance(valor_novo, SimpleNamespace):
+                valor_novo = vars(valor_novo)
+
+            field_status = []
+            for field in _BEM_COLETA_FIELDS:
+                coleta_val = _json_or_text(incoming.get(field))
+                if not coleta_val:
+                    continue
+
+                if is_rejeicao:
+                    # Rejeição: nenhum campo foi aplicado
+                    estado = "rejeitado"
+                elif bool(valor_novo.get(field) is not None and _json_or_text(valor_novo.get(field))):
+                    estado = "aprovado"
+                else:
+                    estado = "nao_aplicado"
+
+                field_status.append(
+                    {
+                        "label": _field_label(field),
+                        "field_name": field,
+                        "coleta_value": coleta_val,
+                        "estado": estado,
+                    }
+                )
+        except Exception:
+            field_status = None
 
     return render(
         request,
@@ -807,6 +1073,11 @@ def audit_detail(request, audit_id):
             "nav_active": "audit",
             "audit_entry": audit_ns,
             "comparisons": comparisons,
+            "field_status": field_status,
             "audit_id": raw.get("id"),
+            "snap": snap,
+            "snap_merged": snap_merged,
+            "snap_changed": snap_changed,
+            "snap_has_anterior": snap_has_anterior,
         },
     )
