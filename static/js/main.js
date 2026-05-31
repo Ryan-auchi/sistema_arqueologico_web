@@ -166,7 +166,20 @@ function bindAuthModals() {
 	});
 }
 
+function bindFlashMessages() {
+	function dismiss(el) {
+		el.classList.add('flash-hiding');
+		el.addEventListener('transitionend', () => el.remove(), { once: true });
+	}
+
+	document.querySelectorAll('.flash-message').forEach((msg) => {
+		msg.querySelector('.flash-close')?.addEventListener('click', () => dismiss(msg));
+		setTimeout(() => { if (msg.isConnected) dismiss(msg); }, 4000);
+	});
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+	bindFlashMessages();
 	bindAuthMenu();
 	bindAuthModals();
 	bindMapPage();

@@ -225,7 +225,34 @@ body {
     background: #fff;
     box-shadow: 0 12px 28px rgba(20, 18, 15, 0.12);
     font-size: 0.93rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
+
+.flash-message.flash-hiding {
+    opacity: 0;
+    transform: translateX(8px);
+    pointer-events: none;
+}
+
+.flash-message span { flex: 1; }
+
+.flash-close {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+    color: inherit;
+    opacity: 0.45;
+    flex-shrink: 0;
+    border-radius: 4px;
+    transition: opacity 0.15s;
+}
+.flash-close:hover { opacity: 1; }
 
 .flash-error {
     border-color: rgba(185, 28, 28, 0.2);
