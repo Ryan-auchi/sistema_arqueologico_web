@@ -1,0 +1,151 @@
+{# Modal snapshot — partial incluído em audit_detail.html #}
+<div id="snapshot-overlay"
+     style="display:none; position:fixed; inset:0; background:rgba(30,20,10,0.55); z-index:900; align-items:center; justify-content:center; padding:24px;"
+     aria-hidden="true"
+     onclick="if(event.target===this) fecharSnapshot()">
+
+    <div role="dialog" aria-modal="true" aria-label="Snapshot do registro"
+         style="background:#fff; border-radius:8px; width:100%; max-width:720px; max-height:85vh;
+                display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.22);">
+
+        <!-- cabeçalho -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:24px 28px 18px; border-bottom:1px solid #EAE5E2; flex-shrink:0;">
+            <div>
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#80756d; margin:0 0 4px;">Snapshot do registro auditado</p>
+                <h2 style="font-family:'Newsreader',serif; font-size:22px; font-weight:400; color:#312113; margin:0;">
+                    Auditoria #{{ audit_id }}
+                    <span style="font-size:14px; color:#80756d; font-family:'Inter',sans-serif;">· {{ audit_entry.operacao|default:""|upper }}</span>
+                </h2>
+            </div>
+            <button type="button" onclick="fecharSnapshot()" aria-label="Fechar"
+                    style="background:transparent; border:none; font-size:18px; color:#80756d; cursor:pointer; padding:6px 10px; border-radius:4px; line-height:1;">✕</button>
+        </div>
+
+        <!-- corpo — card com seções, lê do `snap` resolvido na view -->
+        <div style="overflow-y:auto; flex:1;">
+
+            {% if snap.nome_bem or snap.codigo_iphan %}
+            <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2); background:rgba(73,54,39,0.03);">
+                <p style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 4px; font-weight:400;">{{ snap.nome_bem|default:"Sem nome" }}</p>
+                <span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;">{{ snap.codigo_iphan|default:"Código não informado" }}</span>
+                {% if snap.municipio %}<span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;"> · {{ snap.municipio }}{% if snap.uf %}/{{ snap.uf }}{% endif %}</span>{% endif %}
+            </div>
+            {% endif %}
+
+            {% if snap.descricao_atualizacao %}
+            <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2);">
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 10px;">Descrição</p>
+                <p style="font-family:'Liberation Serif',serif; font-size:15px; line-height:1.7; color:#4e453e; margin:0;">{{ snap.descricao_atualizacao }}</p>
+            </div>
+            {% endif %}
+
+            {% if snap.natureza or snap.tipo or snap.ano_registro or snap.nomes_populares or snap.artefatos %}
+            <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2);">
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Identificação</p>
+                {% if snap.natureza %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Natureza</span>
+                    <span style="font-size:14px; color:#312113;">{{ snap.natureza }}</span>
+                </div>
+                {% endif %}
+                {% if snap.tipo %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Tipo</span>
+                    <span style="font-size:14px; color:#312113;">{{ snap.tipo }}</span>
+                </div>
+                {% endif %}
+                {% if snap.ano_registro %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Ano de registro</span>
+                    <span style="font-size:14px; color:#312113;">{{ snap.ano_registro }}</span>
+                </div>
+                {% endif %}
+                {% if snap.nomes_populares %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Nomes populares</span>
+                    <span style="font-size:14px; color:#312113;">{{ snap.nomes_populares }}</span>
+                </div>
+                {% endif %}
+                {% if snap.publicado != None %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Publicado</span>
+                    <span style="font-size:14px; color:#312113;">{% if snap.publicado %}Sim{% else %}Não{% endif %}</span>
+                </div>
+                {% endif %}
+                {% if snap.artefatos %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:start;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase; padding-top:2px;">Artefatos</span>
+                    <span style="display:flex; flex-wrap:wrap; gap:6px;">
+                        {% for a in snap.artefatos %}
+                        <span style="background:rgba(73,54,39,0.08); border-radius:10px; padding:2px 10px; font-size:11px; font-weight:700; color:#493627;">{{ a }}</span>
+                        {% endfor %}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if snap.endereco or snap.municipio or snap.cep or snap.latitude or snap.meios_acesso %}
+            <div style="padding:20px 28px;">
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Localização</p>
+                {% if snap.endereco %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Endereço</span>
+                    <span style="font-size:14px; color:#312113;">{{ snap.endereco }}</span>
+                </div>
+                {% endif %}
+                {% if snap.municipio %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Município/UF</span>
+                    <span style="font-size:14px; color:#312113;">{{ snap.municipio }}{% if snap.uf %}/{{ snap.uf }}{% endif %}</span>
+                </div>
+                {% endif %}
+                {% if snap.cep %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">CEP</span>
+                    <span style="font-size:14px; color:#312113;">{{ snap.cep }}</span>
+                </div>
+                {% endif %}
+                {% if snap.latitude or snap.longitude %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Coordenadas</span>
+                    <span style="font-size:14px; color:#312113; font-family:'Liberation Mono',monospace;">{{ snap.latitude }}, {{ snap.longitude }}</span>
+                </div>
+                {% endif %}
+                {% if snap.meios_acesso %}
+                <div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:baseline;">
+                    <span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Meios de acesso</span>
+                    <span style="font-size:14px; color:#312113;">{{ snap.meios_acesso }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+
+        <!-- rodapé -->
+        <div style="padding:16px 28px; border-top:1px solid #EAE5E2; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; background:#f9f7f5; border-radius:0 0 8px 8px;">
+            <span style="font-size:12px; color:#80756d;">{{ audit_entry.data_hora|date:"d M Y H:i" }} · {{ audit_entry.usuario.nome|default:"Sistema" }}</span>
+            <button type="button" onclick="fecharSnapshot()"
+                    style="background:#312113; color:#fff; border:none; border-radius:4px; padding:8px 20px; font-size:12px; font-weight:700; cursor:pointer;">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirSnapshot() {
+    const el = document.getElementById('snapshot-overlay');
+    el.style.display = 'flex';
+    el.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+function fecharSnapshot() {
+    const el = document.getElementById('snapshot-overlay');
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharSnapshot(); });
+</script>

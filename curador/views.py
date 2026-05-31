@@ -343,6 +343,38 @@ _AUDIT_FIELD_ORDER = [
 ]
 
 
+_SNAP_FIELDS = [
+    "nome_bem", "codigo_iphan", "nomes_populares", "natureza", "tipo",
+    "artefatos", "publicado", "ano_registro", "descricao_atualizacao",
+    "municipio", "uf", "cep", "endereco", "latitude", "longitude", "meios_acesso",
+]
+
+
+def _build_audit_snap(audit_ns) -> SimpleNamespace:
+    """
+    Retorna um SimpleNamespace com todos os campos do snapshot normalizados.
+
+    Prioridade: valor_anterior (snapshot completo para Alteração/Exclusão).
+    Fallback:   valor_novo (snapshot para Inserção, onde anterior é null).
+    Campos ausentes ficam como None — nunca levantam VariableDoesNotExist no template.
+    """
+    def _as_dict(v):
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, SimpleNamespace):
+            return vars(v)
+        return {}
+
+    before = _as_dict(getattr(audit_ns, "valor_anterior", {}))
+    after = _as_dict(getattr(audit_ns, "valor_novo", {}))
+
+    # Usa valor_anterior se tiver dados; senão cai em valor_novo (caso Inserção).
+    base = before if before else after
+    # Complementa campos ausentes com valor_novo como fallback secundário.
+    merged = {f: base.get(f, after.get(f, None)) for f in _SNAP_FIELDS}
+    return _namespace(merged)
+
+
 def _field_comparisons_from_audit(audit_ns) -> list[dict]:
     """
     Extrai comparações campo-a-campo de um registro de auditoria.
@@ -799,6 +831,7 @@ def audit_detail(request, audit_id):
             audit_ns.curadoria = _namespace({"observacao": "", "status": ""})
 
     comparisons = _field_comparisons_from_audit(audit_ns)
+    snap = _build_audit_snap(audit_ns)
 
     return render(
         request,
@@ -808,5 +841,6 @@ def audit_detail(request, audit_id):
             "audit_entry": audit_ns,
             "comparisons": comparisons,
             "audit_id": raw.get("id"),
+            "snap": snap,
         },
     )

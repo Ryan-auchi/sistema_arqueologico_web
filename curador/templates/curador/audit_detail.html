@@ -388,25 +388,43 @@
             {% endfor %}
         </div>
 
-        <div class="notes-card">
-            <div class="notes-icon" aria-hidden="true">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="9" y1="15" x2="15" y2="15"></line>
-                    <line x1="9" y1="11" x2="15" y2="11"></line>
-                    <line x1="9" y1="19" x2="15" y2="19"></line>
-                </svg>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:stretch;">
+            <div class="notes-card">
+                <div class="notes-icon" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                        <line x1="9" y1="11" x2="15" y2="11"></line>
+                        <line x1="9" y1="19" x2="15" y2="19"></line>
+                    </svg>
+                </div>
+                <h3 class="notes-title">Observações da Curadoria</h3>
+                <p class="notes-text">
+                    {% if audit_entry.curadoria and audit_entry.curadoria.observacao %}
+                        {{ audit_entry.curadoria.observacao }}
+                    {% else %}
+                        Nenhuma observação registrada para esta curadoria.
+                    {% endif %}
+                </p>
             </div>
-            <h3 class="notes-title">Observações da Curadoria</h3>
-            <p class="notes-text">
-                {% if audit_entry.curadoria and audit_entry.curadoria.observacao %}
-                    {{ audit_entry.curadoria.observacao }}
-                {% else %}
-                    Nenhuma observação registrada para esta curadoria.
-                {% endif %}
-            </p>
+
+            <button type="button" onclick="abrirSnapshot()"
+                    style="flex-shrink:0; align-self:stretch; background:#312113; color:#fff; border:none; border-radius:8px;
+                           padding:24px 28px; cursor:pointer; display:flex; flex-direction:column; justify-content:center;
+                           align-items:flex-start; gap:8px; min-width:180px; text-align:left;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    <line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line>
+                </svg>
+                <span style="font-family:'Newsreader',serif; font-size:20px; font-weight:400; line-height:1.2;">Ver snapshot<br>do registro</span>
+                <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; opacity:0.65;">
+                    {{ comparisons|length }} campo{{ comparisons|length|pluralize:"s" }} auditado{{ comparisons|length|pluralize:"s" }}
+                </span>
+            </button>
         </div>
     </main>
 </section>
+
+{% include "curador/_snapshot_modal.html" %}
 {% endblock %}
