@@ -106,6 +106,45 @@ def login_to_api(email: str, password: str) -> tuple[str, dict[str, Any]]:
     return token, user
 
 
+def register_to_api(
+    name: str,
+    email: str,
+    password: str,
+    password_confirmation: str,
+    classificacao: str,
+) -> tuple[str, dict[str, Any]]:
+    payload = _request(
+        "POST",
+        "/auth/register",
+        json_body={
+            "name": name,
+            "email": email,
+            "password": password,
+            "password_confirmation": password_confirmation,
+            "classificacao": classificacao,
+        },
+        base_url=API_AUTH_BASE_URL,
+    )
+
+    token = _normalize_text(payload.get("token"))
+    user = payload.get("user") if isinstance(payload.get("user"), dict) else {}
+
+    if not token:
+        raise ApiError("API registration did not return a token.")
+
+    return token, user
+
+
+def request_password_reset(email: str) -> str:
+    payload = _request(
+        "POST",
+        "/auth/password-reset",
+        json_body={"email": email},
+        base_url=API_AUTH_BASE_URL,
+    )
+    return _normalize_text(payload.get("message"))
+
+
 
 def _unwrap_paginated(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if isinstance(payload.get("data"), list):

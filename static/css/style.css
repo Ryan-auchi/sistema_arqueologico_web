@@ -648,6 +648,98 @@ h2 {
     }
 }
 
+.auth-form select {
+    min-height: 40px;
+    border-radius: 10px;
+    border: 1px solid rgba(120, 113, 108, 0.35);
+    padding: 0 10px;
+    font: inherit;
+    color: inherit;
+    background: #fff;
+    background-clip: padding-box;
+    cursor: pointer;
+}
+
+.auth-popover-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.auth-text-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #8c3a00;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.auth-text-btn:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.auth-modal {
+    margin: auto;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 0;
+    width: min(400px, calc(100vw - 32px));
+    box-shadow: 0 20px 42px rgba(20, 18, 15, 0.14);
+    background: var(--surface);
+}
+
+.auth-modal::backdrop {
+    background: rgba(20, 18, 15, 0.35);
+}
+
+.auth-modal-inner {
+    padding: 18px;
+}
+
+.auth-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.auth-modal-header .auth-title {
+    margin: 0;
+}
+
+.auth-modal-header .auth-meta {
+    margin: 4px 0 0;
+}
+
+.auth-modal-close {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+}
+
+.auth-modal-close:hover {
+    background: var(--surface-muted);
+    color: var(--text-main);
+}
+
 @media (max-width: 540px) {
     .shell {
         padding-left: 14px;

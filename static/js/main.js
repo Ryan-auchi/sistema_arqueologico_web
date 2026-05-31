@@ -89,7 +89,6 @@ function bindAuthMenu() {
 
 	const toggle = menu.querySelector('[data-auth-toggle]');
 	const popover = menu.querySelector('[data-auth-popover]');
-	const recoveryBtn = menu.querySelector('[data-recovery-btn]');
 
 	if (!toggle || !popover) {
 		return;
@@ -114,7 +113,7 @@ function bindAuthMenu() {
 	});
 
 	document.addEventListener('click', (event) => {
-		if (!menu.contains(event.target)) {
+		if (!menu.contains(event.target) && !event.target.closest('.auth-modal')) {
 			closePopover();
 		}
 	});
@@ -124,15 +123,51 @@ function bindAuthMenu() {
 			closePopover();
 		}
 	});
+}
 
-	if (recoveryBtn) {
-		recoveryBtn.addEventListener('click', () => {
-			alert('Recuperação de senha será implementada em breve.');
-		});
+function bindAuthModals() {
+	const authPopover = document.querySelector('[data-auth-popover]');
+	const authToggle = document.querySelector('[data-auth-toggle]');
+
+	function closeAuthPopover() {
+		if (authPopover) {
+			authPopover.hidden = true;
+		}
+		if (authToggle) {
+			authToggle.setAttribute('aria-expanded', 'false');
+		}
 	}
+
+	document.querySelectorAll('[data-modal-open]').forEach((btn) => {
+		btn.addEventListener('click', () => {
+			const dialog = document.getElementById(btn.dataset.modalOpen);
+			if (dialog) {
+				closeAuthPopover();
+				dialog.showModal();
+			}
+		});
+	});
+
+	document.querySelectorAll('[data-modal-close]').forEach((btn) => {
+		btn.addEventListener('click', () => {
+			const dialog = document.getElementById(btn.dataset.modalClose);
+			if (dialog) {
+				dialog.close();
+			}
+		});
+	});
+
+	document.querySelectorAll('.auth-modal').forEach((dialog) => {
+		dialog.addEventListener('click', (event) => {
+			if (event.target === dialog) {
+				dialog.close();
+			}
+		});
+	});
 }
 
 document.addEventListener('DOMContentLoaded', () => {
 	bindAuthMenu();
+	bindAuthModals();
 	bindMapPage();
 });
