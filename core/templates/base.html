@@ -82,14 +82,6 @@
                                     <label for="auth-password">Senha</label>
                                     <input id="auth-password" name="password" type="password" required>
                                     <button class="button button-primary auth-submit" type="submit">Logar</button>
-                                    <button
-                                        class="button button-secondary auth-recovery"
-                                        type="submit"
-                                        formaction="{% url 'auth-recovery' %}"
-                                        formnovalidate
-                                    >
-                                        Recuperar senha
-                                    </button>
                                 </form>
                             {% endif %}
                         </div>
