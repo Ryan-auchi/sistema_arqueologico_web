@@ -168,6 +168,7 @@ def _curadoria_item(raw: dict) -> SimpleNamespace:
         tipo_label = "Coleta de campo"
 
     status_display = _status_label(raw.get("status"))
+    num_conflitos = _count_field_conflicts(raw) if entidade_tipo == "coleta" else 0
 
     return _namespace(
         {
@@ -177,6 +178,8 @@ def _curadoria_item(raw: dict) -> SimpleNamespace:
             "codigo_iphan_display": iphan,
             "nome_display": nome,
             "observacao": raw.get("observacao") or "",
+            "num_conflitos": num_conflitos,
+            "tem_conflito": num_conflitos > 0,
             "criado_em": _to_datetime(raw.get("created_at") or raw.get("data_avaliacao")),
             "status": raw.get("status") or "pendente",
             "acao_resultante": raw.get("acao_resultante") or "",
@@ -293,6 +296,23 @@ def _build_comparisons(curadoria_raw: dict) -> list[dict]:
         )
 
     return comparisons
+
+
+def _count_field_conflicts(curadoria_raw: dict) -> int:
+    """
+    Conta campos que diferem entre a coleta e o registro oficial.
+    Um conflito real é quando o campo já existia no bem e o valor proposto é diferente.
+    Retorna 0 para novos sítios (sem bem_material) — lá não há conflito, só inserção.
+    """
+    bem = curadoria_raw.get("bem_material") or {}
+    if not bem:
+        return 0
+
+    try:
+        comparisons = _build_comparisons(curadoria_raw)
+        return sum(1 for c in comparisons if c["is_different"] and not c["is_new_field"])
+    except Exception:
+        return 0
 
 
 def _audit_entry(raw: dict) -> SimpleNamespace:
@@ -504,14 +524,23 @@ def _field_comparisons_from_audit(audit_ns) -> list[dict]:
 def curadoria_fila(request):
     """
     Lista curadorias com status 'pendente' vindas da API.
-
-    A API já filtra por pendente em GET /admin/curadorias.
-    O filtro local de query é apenas para busca no conjunto retornado.
+    Filtros aplicados localmente após fetch completo.
     """
     query = request.GET.get("q", "").strip().lower()
+    filtro_tipo = request.GET.get("tipo", "").strip()
+    filtro_destino = request.GET.get("destino", "").strip()
+    filtro_conflito = request.GET.get("conflito", "").strip()
+    filtro_meu = request.GET.get("meu_responsavel", "").strip() == "1"
+
+    current_filters = {
+        "q": request.GET.get("q", "").strip(),
+        "tipo": filtro_tipo,
+        "destino": filtro_destino,
+        "conflito": filtro_conflito,
+        "meu_responsavel": "1" if filtro_meu else "",
+    }
 
     try:
-        # fetch_all_curadorias já pagina a API e retorna todos os registros.
         curadorias = [
             _curadoria_item(item)
             for item in fetch_all_curadorias()
@@ -521,14 +550,60 @@ def curadoria_fila(request):
         curadorias = []
         messages.warning(request, "Não foi possível carregar as curadorias da API.")
 
+    total_antes_filtro = len(curadorias)
+    total_conflitos = len([c for c in curadorias if c.tem_conflito])
+
+    # -- busca textual
     if query:
+        def _usuario_nome(c):
+            u = c.usuario
+            if not u:
+                return ""
+            if isinstance(u, dict):
+                return u.get("nome") or u.get("name") or ""
+            return getattr(u, "nome", None) or getattr(u, "name", "") or ""
+
         curadorias = [
-            c
-            for c in curadorias
+            c for c in curadorias
             if query in str(c.codigo_iphan_display).lower()
             or query in str(c.nome_display).lower()
             or query in str(c.observacao).lower()
+            or query in str(c.tipo_label).lower()
+            or query in _usuario_nome(c).lower()
         ]
+
+    # -- tipo: coleta ou artigo
+    if filtro_tipo == "coleta":
+        curadorias = [c for c in curadorias if c.entidade_tipo == "coleta"]
+    elif filtro_tipo == "artigo":
+        curadorias = [c for c in curadorias if c.entidade_tipo == "submissao_artigo"]
+
+    # -- destino: novo sítio (sem bem_material_id) ou sítio existente (com)
+    if filtro_destino == "novo_sitio":
+        curadorias = [c for c in curadorias if not c.bem_material_id]
+    elif filtro_destino == "sitio_existente":
+        curadorias = [c for c in curadorias if c.bem_material_id]
+
+    # -- conflito (baseado em diferenças reais de campo, não na observação do curador)
+    if filtro_conflito == "sim":
+        curadorias = [c for c in curadorias if c.tem_conflito]
+    elif filtro_conflito == "nao":
+        curadorias = [c for c in curadorias if not c.tem_conflito]
+
+    # -- responsável: filtra sítios onde o usuário logado é curador responsável
+    if filtro_meu:
+        user_email = getattr(request.user, "email", "")
+        def _is_meu(c):
+            bem = c.bem_material
+            if not bem:
+                return False
+            resp = bem.get("curador_responsavel") if isinstance(bem, dict) else getattr(bem, "curador_responsavel", None)
+            if not resp:
+                return False
+            if isinstance(resp, dict):
+                return resp.get("email") == user_email
+            return getattr(resp, "email", None) == user_email
+        curadorias = [c for c in curadorias if _is_meu(c)]
 
     paginator = Paginator(curadorias, 10)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -539,9 +614,10 @@ def curadoria_fila(request):
         {
             "nav_active": "curadoria",
             "page_obj": page_obj,
-            "query": request.GET.get("q", "").strip(),
-            "total_pendentes": len(curadorias),
-            "conflitos": len([c for c in curadorias if c.observacao]),
+            "current_filters": current_filters,
+            "total_pendentes": total_antes_filtro,
+            "total_filtrado": len(curadorias),
+            "conflitos": total_conflitos,
         },
     )
 
@@ -779,19 +855,44 @@ def curadoria_revisao(request, curadoria_id):
     )
 
 
+_AUDIT_ENTIDADE_MAP = {
+    "criacao_sitio":       "App\\Models\\BemMaterial",
+    "exclusao_sitio":      "App\\Models\\BemMaterial",
+    "alteracao":           "App\\Models\\BemMaterial",
+    "sitios":              "App\\Models\\BemMaterial",
+    "artigos":             "App\\Models\\ArtigoBemMaterial",
+    "aprovacoes_sitio":    "App\\Models\\Curadoria",
+    "aprovacoes_artigo":   "App\\Models\\SubmissaoArtigo",
+}
+
+_AUDIT_OP_FILTER = {
+    "criacao_sitio":  lambda op: "inser" in op.lower(),
+    "exclusao_sitio": lambda op: "exclus" in op.lower(),
+    "alteracao":      lambda op: "altera" in op.lower(),
+}
+
+
 @curador_or_admin_required
 def audit_logs(request):
     """
     Lista paginada de auditorias via GET /admin/auditorias.
-
-    A API retorna 50 registros por página ordenados por data_hora DESC.
-    A paginação aqui segue exatamente a paginação da API.
+    Filtros de tipo enviados para a API; filtros de operação aplicados localmente.
     """
     query = request.GET.get("q", "").strip().lower()
+    filtro = request.GET.get("filtro", "").strip()
+    responsavel_q = request.GET.get("responsavel", "").strip().lower()
     page = max(1, int(request.GET.get("page", 1) or 1))
 
+    current_filters = {
+        "q": request.GET.get("q", "").strip(),
+        "filtro": filtro,
+        "responsavel": request.GET.get("responsavel", "").strip(),
+    }
+
+    entidade_tipo_param = _AUDIT_ENTIDADE_MAP.get(filtro)
+
     try:
-        items, meta = list_auditorias(page=page)
+        items, meta = list_auditorias(page=page, entidade_tipo=entidade_tipo_param)
     except ApiError:
         items, meta = [], {"total": 0, "page": 1, "pages": 1, "per_page": 50}
 
@@ -848,18 +949,27 @@ def audit_logs(request):
             }
         )
 
-    # Filtro local por query (busca no conjunto retornado pela API).
+    # -- filtro de operação (client-side, complementar ao filtro de entidade da API)
+    if filtro in _AUDIT_OP_FILTER:
+        op_fn = _AUDIT_OP_FILTER[filtro]
+        entries = [e for e in entries if op_fn(e["operation"])]
+
+    # -- busca textual
     if query:
         entries = [
-            e
-            for e in entries
+            e for e in entries
             if query in str(e["user_name"]).lower()
             or query in str(e["operation_label"]).lower()
             or query in str(e["entity"]).lower()
             or query in str(e["target"]).lower()
+            or query in str(e.get("before_preview") or "").lower()
+            or query in str(e.get("after_preview") or "").lower()
         ]
 
-    # Paginação reflete exatamente o que a API retornou.
+    # -- filtro por responsável (nome do usuário)
+    if responsavel_q:
+        entries = [e for e in entries if responsavel_q in str(e["user_name"]).lower()]
+
     paginator = Paginator(entries, meta.get("per_page", 50))
     page_obj = paginator.get_page(meta.get("page", 1))
 
@@ -869,11 +979,10 @@ def audit_logs(request):
         {
             "nav_active": "audit",
             "page_obj": page_obj,
-            "query": request.GET.get("q", "").strip(),
+            "current_filters": current_filters,
             "total_logs": meta.get("total", len(entries)),
             "sync_status": "NOMINAL",
             "total_users": len({e["user_name"] for e in entries}),
-            # Paginação da API (para os links anterior/próximo no template).
             "api_page": meta.get("page", 1),
             "api_pages": meta.get("pages", 1),
         },

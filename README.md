@@ -31,6 +31,21 @@ Mapa e listagem dos sítios. Acessível sem autenticação (guest) — os endpoi
 
 Os dados são consumidos em tempo real da API com cache local de 60 segundos. O controle de publicação na tela de detalhe do sítio (visível apenas para curador e admin) atualiza o registro via `PATCH /admin/bens-materiais/{id}/publicar`, registra auditoria e invalida o cache imediatamente.
 
+**Filtros da listagem** — sidebar com os seguintes campos, todos aplicados localmente sobre o cache:
+
+| Filtro | Campo pesquisado |
+|---|---|
+| Busca textual | `nome_bem`, `codigo_iphan`, `nomes_populares`, `municipio`, `descricao_atualizacao`, `artefatos` |
+| Estado (UF) | `uf` — match exato |
+| Município | `municipio` — match exato |
+| Natureza | `natureza` — match exato |
+| Tipo | `tipo` — match exato |
+| Artefato | Filtra sítios que contêm o artefato selecionado na lista `artefatos` |
+| Ano de Registro | Faixa de `ano_registro` (de / até) |
+| Mostrar não publicados | Oculto por padrão; ao ativar exibe aviso de que os dados são preliminares |
+
+A paginação preserva todos os filtros ativos nos links de navegação.
+
 A tela de detalhe possui abas que expõem informações complementares do sítio:
 
 | Aba | Visibilidade | Conteúdo |
@@ -57,6 +72,20 @@ As notificações flash possuem auto-dismiss em 4 segundos e botão ✕ para fec
 ### Curadoria
 Fluxo de revisão técnica para curadores e administradores. A fila é **polimórfica**: aceita tanto coletas de campo quanto submissões de artigos científicos enviadas pelo aplicativo móvel.
 
+**Filtros da fila** — painel expansível ativado pelo botão "Filtros" na action bar:
+
+| Filtro | Comportamento |
+|---|---|
+| Busca textual | Pesquisa em código IPHAN, nome, tipo de entrada e nome do usuário |
+| Tipo de entrada | Coleta de campo ou Artigo científico |
+| Destino da coleta | Novo sítio (sem `bem_material_id`) ou Sítio existente (com `bem_material_id`) |
+| Conflitos | Com conflito / Sem conflito — baseado em diferenças reais de campo |
+| Sou responsável | Filtra sítios onde o curador logado é o responsável |
+
+O badge **"X conflitos"** no topo reflete o total de itens com conflito em toda a fila pendente, independentemente dos filtros ativos. O badge **"X filtrados"** aparece apenas quando o subconjunto visível difere do total.
+
+**Detecção de conflito**: um item é marcado como conflito quando pelo menos um campo da coleta proposta difere do valor já existente no bem material oficial (campo com valor anterior não vazio). Campos preenchidos pela primeira vez não contam como conflito. A contagem aparece em cada linha da fila ("X campo(s) em conflito"). Novos sítios (sem bem_material) e artigos nunca têm conflito.
+
 **Revisão de coleta** (`curadoria_revisao`):
 - Comparação campo a campo entre a entrada recebida e o registro oficial
 - Seleção de campos individuais a aceitar — respeitada tanto em `criarSitio` quanto em `atualizarSitio`
@@ -76,9 +105,18 @@ Histórico completo de operações. A listagem (`audit_logs`) exibe labels espec
 |---|---|
 | Inserção de BemMaterial | INSERÇÃO |
 | Alteração de BemMaterial | ALTERAÇÃO |
+| Exclusão de BemMaterial | EXCLUSAO (badge vermelho) |
 | Criação de vínculo artigo | VÍNCULO-ARTIGO |
 | Remoção de vínculo artigo | REMOÇÃO-ARTIGO |
 | Rejeição de curadoria | REJEIÇÃO |
+
+**Filtros de auditoria** — painel expansível com os seguintes campos:
+
+| Filtro | Comportamento |
+|---|---|
+| Busca textual | Pesquisa em usuário, operação, entidade, target e conteúdo dos snapshots |
+| Tipo de operação | Seletor agrupado: sítios (todos, criação, alteração, exclusão, aprovação/rejeição de coleta) e artigos (vínculos, aprovação/rejeição) — filtra por `entidade_tipo` na API; operação específica aplicada localmente |
+| Responsável pela ação | Busca textual no nome do usuário que realizou a ação |
 
 **Tela de detalhe** (`audit_detail`):
 

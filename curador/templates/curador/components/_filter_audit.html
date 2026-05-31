@@ -1,0 +1,43 @@
+{# Painel de filtros da auditoria — mesmas classes CSS de filter-sidebar.css #}
+<div id="filter-panel-audit"
+     style="display:{% if current_filters.filtro or current_filters.responsavel %}block{% else %}none{% endif %};
+            background:#f9f7f5; border:1px solid rgba(210,196,187,0.3); border-radius:4px; padding:20px 24px; margin-bottom:16px;">
+
+    <form method="get" action="{% url 'audit-logs' %}" id="form-filtros-audit">
+        <input type="hidden" name="q" value="{{ current_filters.q }}">
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; align-items:end;">
+
+            <div class="field-container full" style="margin:0;">
+                <label class="figma-label" for="f-filtro">Tipo de operação</label>
+                <select id="f-filtro" class="figma-select" name="filtro">
+                    <option value="">Todas as operações</option>
+                    <optgroup label="Sítios">
+                        <option value="sitios"           {% if current_filters.filtro == "sitios" %}selected{% endif %}>Todos os sítios</option>
+                        <option value="criacao_sitio"    {% if current_filters.filtro == "criacao_sitio" %}selected{% endif %}>Criação de sítio</option>
+                        <option value="alteracao"        {% if current_filters.filtro == "alteracao" %}selected{% endif %}>Alteração de registro</option>
+                        <option value="exclusao_sitio"   {% if current_filters.filtro == "exclusao_sitio" %}selected{% endif %}>Exclusão de sítio</option>
+                        <option value="aprovacoes_sitio" {% if current_filters.filtro == "aprovacoes_sitio" %}selected{% endif %}>Aprovação / Rejeição de coleta</option>
+                    </optgroup>
+                    <optgroup label="Artigos">
+                        <option value="artigos"            {% if current_filters.filtro == "artigos" %}selected{% endif %}>Vínculos de artigos</option>
+                        <option value="aprovacoes_artigo"  {% if current_filters.filtro == "aprovacoes_artigo" %}selected{% endif %}>Aprovação / Rejeição de artigo</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="field-container full" style="margin:0;">
+                <label class="figma-label" for="f-responsavel">Responsável pela ação</label>
+                <input id="f-responsavel" class="figma-input" type="text" name="responsavel"
+                       placeholder="Nome do usuário..." value="{{ current_filters.responsavel }}">
+            </div>
+
+            <div style="display:flex; gap:8px; align-items:center; padding-top:16px;">
+                <button type="submit" class="btn-filter" style="background:#312113; color:#fff; border-color:#312113;">Aplicar</button>
+                <a href="{% url 'audit-logs' %}{% if current_filters.q %}?q={{ current_filters.q }}{% endif %}"
+                   style="font-size:12px; color:#80756d; text-decoration:underline;">Limpar</a>
+            </div>
+
+        </div>
+    </form>
+</div>

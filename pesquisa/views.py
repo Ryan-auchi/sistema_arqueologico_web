@@ -154,14 +154,30 @@ def _site_payload_to_dict(site):
 
 
 def _site_filter(
-    site, *, query="", state="", municipality="", conservation="", legal_level="", nature="", site_type=""
+    site,
+    *,
+    query="",
+    state="",
+    municipality="",
+    nature="",
+    site_type="",
+    artefato="",
+    ano_min="",
+    ano_max="",
+    show_unpublished=False,
 ):
+    if not show_unpublished and not site.publicado:
+        return False
+
+    artefatos_str = " ".join(str(a) for a in (site.artefatos or []))
     search_target = " ".join(
         [
-            str(site.name or ""),
-            str(site.code or ""),
+            str(site.nome_bem or ""),
+            str(site.codigo_iphan or ""),
+            str(site.nomes_populares or ""),
             str(site.municipality or ""),
-            str(site.summary or ""),
+            str(site.descricao_atualizacao or ""),
+            artefatos_str,
         ]
     ).lower()
 
@@ -180,6 +196,26 @@ def _site_filter(
     if site_type and str(site.raw.get("tipo") or "").lower() != site_type.lower():
         return False
 
+    if artefato:
+        artefatos = [str(a).lower() for a in (site.artefatos or [])]
+        if artefato.lower() not in artefatos:
+            return False
+
+    ano = site.ano_registro
+    if ano_min:
+        try:
+            if not ano or int(ano) < int(ano_min):
+                return False
+        except (ValueError, TypeError):
+            pass
+
+    if ano_max:
+        try:
+            if not ano or int(ano) > int(ano_max):
+                return False
+        except (ValueError, TypeError):
+            pass
+
     return True
 
 
@@ -188,61 +224,72 @@ def _filtered_sites(request):
     query = params.get("q", "").strip()
     state = params.get("state", "").strip()
     municipality = params.get("municipality", "").strip()
-    conservation = params.get("conservation", "").strip()
-    legal_level = params.get("legal_level", "").strip()
     nature = params.get("nature", "").strip()
     site_type = params.get("type", "").strip()
+    artefato = params.get("artefato", "").strip()
+    ano_min = params.get("ano_min", "").strip()
+    ano_max = params.get("ano_max", "").strip()
+    show_unpublished = params.get("show_unpublished", "") == "1"
 
     try:
-        sites = [_site_payload(site) for site in fetch_all_bens_materiais()]
+        all_sites = [_site_payload(site) for site in fetch_all_bens_materiais()]
     except ApiError:
-        sites = []
+        all_sites = []
 
     filtered = [
         site
-        for site in sites
+        for site in all_sites
         if _site_filter(
             site,
             query=query,
             state=state,
             municipality=municipality,
-            conservation=conservation,
-            legal_level=legal_level,
             nature=nature,
             site_type=site_type,
+            artefato=artefato,
+            ano_min=ano_min,
+            ano_max=ano_max,
+            show_unpublished=show_unpublished,
         )
     ]
 
-    return filtered, {
-        "conservation": conservation,
-        "legal_level": legal_level,
+    return filtered, all_sites, {
         "nature": nature,
         "state": state,
         "municipality": municipality,
         "type": site_type,
+        "artefato": artefato,
+        "ano_min": ano_min,
+        "ano_max": ano_max,
+        "show_unpublished": "1" if show_unpublished else "",
         "q": query,
     }
 
 
-def _filter_options(sites):
-    states = sorted({site.state for site in sites if site.state})
-    municipalities = sorted({site.municipality for site in sites if site.municipality})
-    natures = sorted({site.raw.get("natureza") for site in sites if site.raw.get("natureza")})
-    types = sorted({site.raw.get("tipo") for site in sites if site.raw.get("tipo")})
+def _filter_options(all_sites):
+    states = sorted({site.state for site in all_sites if site.state})
+    municipalities = sorted({site.municipality for site in all_sites if site.municipality})
+    natures = sorted({site.raw.get("natureza") for site in all_sites if site.raw.get("natureza")})
+    types = sorted({site.raw.get("tipo") for site in all_sites if site.raw.get("tipo")})
 
-    municipality_options = [("", "Todos os municípios")] + [(value, value.title()) for value in municipalities]
-    nature_options = [(value, value.title()) for value in natures]
-    type_options = [(value, value.title()) for value in types]
+    artefatos: set[str] = set()
+    for site in all_sites:
+        for a in site.artefatos or []:
+            if a:
+                artefatos.add(str(a))
 
-    return states, municipality_options, [], [], nature_options, type_options
+    municipality_options = [("", "Todos os municípios")] + [(v, v.title()) for v in municipalities]
+    nature_options = [(v, v.title()) for v in natures]
+    type_options = [(v, v.title()) for v in types]
+    artefato_options = [(v, v.title()) for v in sorted(artefatos)]
+
+    return states, municipality_options, nature_options, type_options, artefato_options
 
 
 def pesquisa_mapa(request):
     set_api_auth_token(request.session.get("api_auth_token", ""))
-    sites, current_filters = _filtered_sites(request)
-    state_options, municipality_options, conservation_options, legal_level_options, nature_options, type_options = (
-        _filter_options(sites)
-    )
+    sites, all_sites, current_filters = _filtered_sites(request)
+    state_options, municipality_options, nature_options, type_options, artefato_options = _filter_options(all_sites)
 
     return render(
         request,
@@ -251,11 +298,10 @@ def pesquisa_mapa(request):
             "nav_active": "mapa",
             "sites": sites,
             "sites_json_url": "/api/sitios/",
-            "conservation_options": conservation_options,
             "municipality_options": municipality_options,
-            "legal_level_options": legal_level_options,
             "nature_options": nature_options,
             "type_options": type_options,
+            "artefato_options": artefato_options,
             "state_options": state_options,
             "current_filters": current_filters,
         },
@@ -264,12 +310,13 @@ def pesquisa_mapa(request):
 
 def pesquisa_lista(request):
     set_api_auth_token(request.session.get("api_auth_token", ""))
-    sites, current_filters = _filtered_sites(request)
+    sites, all_sites, current_filters = _filtered_sites(request)
     paginator = Paginator(sites, 6)
     page_obj = paginator.get_page(request.GET.get("page"))
+    state_options, municipality_options, nature_options, type_options, artefato_options = _filter_options(all_sites)
 
-    state_options, municipality_options, conservation_options, legal_level_options, nature_options, type_options = (
-        _filter_options(sites)
+    filter_qs = "&".join(
+        f"{k}={v}" for k, v in current_filters.items() if v
     )
 
     return render(
@@ -279,13 +326,13 @@ def pesquisa_lista(request):
             "nav_active": "lista",
             "page_obj": page_obj,
             "paginator_count": paginator.count,
-            "conservation_options": conservation_options,
             "municipality_options": municipality_options,
-            "legal_level_options": legal_level_options,
             "nature_options": nature_options,
             "type_options": type_options,
+            "artefato_options": artefato_options,
             "state_options": state_options,
             "current_filters": current_filters,
+            "filter_qs": filter_qs,
         },
     )
 
@@ -479,7 +526,7 @@ def api_buscar_doi(request):
 
 
 def api_sites(request):
-    sites, current_filters = _filtered_sites(request)
+    sites, _all, current_filters = _filtered_sites(request)
 
     return JsonResponse(
         {

@@ -73,21 +73,21 @@
 
         <nav class="pagination" aria-label="Paginação">
             {% if page_obj.has_previous %}
-                <a href="?page=1{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">Primeira</a>
-                <a href="?page={{ page_obj.previous_page_number }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">Anterior</a>
+                <a href="?page=1{% if filter_qs %}&{{ filter_qs }}{% endif %}">Primeira</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">Anterior</a>
             {% endif %}
 
             {% for number in page_obj.paginator.page_range %}
                 {% if number == page_obj.number %}
                     <span class="current">{{ number }}</span>
                 {% else %}
-                    <a href="?page={{ number }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">{{ number }}</a>
+                    <a href="?page={{ number }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">{{ number }}</a>
                 {% endif %}
             {% endfor %}
 
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">Próxima</a>
-                <a href="?page={{ page_obj.paginator.num_pages }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}{% if current_filters.state %}&state={{ current_filters.state }}{% endif %}{% if current_filters.conservation %}&conservation={{ current_filters.conservation }}{% endif %}">Última</a>
+                <a href="?page={{ page_obj.next_page_number }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">Próxima</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">Última</a>
             {% endif %}
         </nav>
     </div>
