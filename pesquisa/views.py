@@ -503,8 +503,6 @@ def site_detail(request, sitio_id):
             "nav_active": "detalhe",
             "sitio": current_site,
             "hero_image_url": hero_image_url,
-            "previous_site": previous_site_obj,
-            "next_site": next_site_obj,
             "audit_entries": audit_entries,
             "site_geometry_geojson": site_geometry_geojson,
             "artigos": artigos,

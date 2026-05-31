@@ -333,7 +333,7 @@ def _normalize_curadoria(entry: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Thread-safe TTL cache for bens materiais
 # ---------------------------------------------------------------------------
-_BENS_CACHE_TTL = 60  # seconds
+_BENS_CACHE_TTL = 300  # seconds — 5 min é suficiente para navegação consecutiva
 _bens_cache_lock = threading.Lock()
 _bens_cache_data: tuple[dict[str, Any], ...] | None = None
 _bens_cache_ts: float = 0.0
