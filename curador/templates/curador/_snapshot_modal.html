@@ -57,6 +57,43 @@
                 {% if snap.trecho_relevante %}<div style="margin-top:8px;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase; display:block; margin-bottom:6px;">Trecho relevante</span><blockquote style="margin:0; padding:10px 14px; border-left:3px solid #c9b49a; font-style:italic; font-size:14px; color:#4e453e; background:#f9f7f5; border-radius:0 4px 4px 0;">{{ snap.trecho_relevante }}</blockquote></div>{% endif %}
             </div>
 
+        {% elif audit_entry.operacao == 'exclusao' %}
+        {# ── Exclusão de Bem Material ─────────────────────────────────── #}
+            <div style="padding:20px 28px; background:#fee2e2; border-bottom:1px solid #fecaca; display:flex; align-items:center; gap:14px;">
+                <div style="width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#991b1b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                </div>
+                <div>
+                    <p style="font-family:'Newsreader',serif; font-size:16px; color:#7f1d1d; margin:0 0 2px; font-weight:400;">Registro excluído</p>
+                    <p style="font-size:12px; color:#991b1b; margin:0;">O snapshot abaixo mostra o último estado antes da exclusão.</p>
+                </div>
+            </div>
+            {% if snap.nome_bem or snap.codigo_iphan %}
+            <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2); background:rgba(73,54,39,0.03);">
+                <p style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 4px; font-weight:400;">{{ snap.nome_bem|default:"Sem nome" }}</p>
+                <span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;">{{ snap.codigo_iphan|default:"Código não informado" }}</span>
+                {% if snap.municipio %}<span style="font-family:'Liberation Mono',monospace; font-size:12px; color:#80756d;"> · {{ snap.municipio }}{% if snap.uf %}/{{ snap.uf }}{% endif %}</span>{% endif %}
+            </div>
+            {% endif %}
+            {% if snap.natureza or snap.tipo or snap.ano_registro %}
+            <div style="padding:20px 28px; border-bottom:1px solid rgba(210,196,187,0.2);">
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Identificação</p>
+                {% if snap.natureza %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Natureza</span><span style="font-size:14px; color:#312113;">{{ snap.natureza }}</span></div>{% endif %}
+                {% if snap.tipo %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Tipo</span><span style="font-size:14px; color:#312113;">{{ snap.tipo }}</span></div>{% endif %}
+                {% if snap.ano_registro %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Ano de registro</span><span style="font-size:14px; color:#312113;">{{ snap.ano_registro }}</span></div>{% endif %}
+            </div>
+            {% endif %}
+            {% if snap.endereco or snap.municipio or snap.uf or snap.latitude %}
+            <div style="padding:20px 28px;">
+                <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#80756d; margin:0 0 12px;">Localização</p>
+                {% if snap.municipio %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Município</span><span style="font-size:14px; color:#312113;">{{ snap.municipio }}</span></div>{% endif %}
+                {% if snap.uf %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; margin-bottom:10px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Estado (UF)</span><span style="font-size:14px; color:#312113;">{{ snap.uf }}</span></div>{% endif %}
+                {% if snap.latitude or snap.longitude %}<div style="display:grid; grid-template-columns:160px 1fr; gap:8px 16px; align-items:baseline;"><span style="font-size:11px; font-weight:700; color:#80756d; text-transform:uppercase;">Coordenadas</span><span style="font-size:14px; color:#312113; font-family:'Liberation Mono',monospace;">{{ snap.latitude }}, {{ snap.longitude }}</span></div>{% endif %}
+            </div>
+            {% endif %}
+
         {% else %}
         {# ── Bem Material ─────────────────────────────────────────────── #}
 
@@ -169,7 +206,7 @@
         <div style="padding:16px 28px; border-top:1px solid #EAE5E2; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; background:#f9f7f5; border-radius:0 0 8px 8px; gap:12px;">
             <span style="font-size:12px; color:#80756d; flex:1;">{{ audit_entry.data_hora|date:"d M Y H:i" }} · {{ audit_entry.usuario.nome|default:"Sistema" }}</span>
 
-            {% if audit_entry.operacao != 'Rejeição' and "Artigo" not in audit_entry.entidade_tipo %}
+            {% if audit_entry.operacao != 'Rejeição' and audit_entry.operacao != 'exclusao' and "Artigo" not in audit_entry.entidade_tipo %}
                 {% if snap_has_anterior %}
                 <button type="button" id="snap-toggle-btn" onclick="toggleSnapView()"
                         style="background:transparent; color:#1d4ed8; border:1px solid #93c5fd; border-radius:4px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">

@@ -9,12 +9,15 @@ from django.utils.dateparse import parse_datetime
 
 from api_client.client import (
     ApiError,
+    atualizar_curador_responsavel,
     buscar_artigo_por_doi,
+    excluir_bem_material,
     fetch_all_bens_materiais,
     fetch_artigos_por_bem,
     fetch_auditorias_for_bem,
     fetch_bem_material,
     fetch_colaboradores_por_bem,
+    fetch_curadores,
     invalidate_bens_cache,
     normalize_bem_material,
     remover_vinculo_artigo,
@@ -65,6 +68,11 @@ def _site_payload(site):
     responsavel = (
         _as_namespace(normalized.get("responsavel") or {}) if isinstance(normalized.get("responsavel"), dict) else {}
     )
+    curador_responsavel = (
+        _as_namespace(normalized.get("curador_responsavel") or {})
+        if isinstance(normalized.get("curador_responsavel"), dict)
+        else {}
+    )
 
     payload = {
         "id": normalized.get("id"),
@@ -106,6 +114,7 @@ def _site_payload(site):
         "deletado_em": _as_datetime(normalized.get("deletado_em")),
         "midias": midias,
         "responsavel": responsavel,
+        "curador_responsavel": curador_responsavel,
         "raw": normalized,
     }
 
@@ -288,6 +297,14 @@ def site_detail(request, sitio_id):
     except ApiError:
         raise Http404("Sítio não encontrado")
 
+    is_curador_or_admin = (
+        request.user.is_authenticated
+        and (
+            request.user.is_superuser
+            or getattr(request.user, "perfil", None) in ("admin", "curador")
+        )
+    )
+
     if request.method == "POST":
         action = request.POST.get("action", "")
 
@@ -340,6 +357,34 @@ def site_detail(request, sitio_id):
                 _messages.error(request, f"Não foi possível remover o vínculo: {exc}")
             return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
+        elif action == "atualizar_curador_responsavel":
+            if not is_curador_or_admin:
+                raise Http404
+            curador_id = request.POST.get("curador_responsavel_id") or None
+            try:
+                updated_site = atualizar_curador_responsavel(sitio_id, curador_id)
+                current_site = _site_payload(updated_site)
+                from django.contrib import messages as _messages
+                _messages.success(request, "Curador responsável atualizado com sucesso.")
+            except ApiError as exc:
+                from django.contrib import messages as _messages
+                _messages.error(request, f"Não foi possível atualizar o curador responsável: {exc}")
+            return redirect("pesquisa-detalhe", sitio_id=sitio_id)
+
+        elif action == "excluir_bem":
+            if not is_curador_or_admin:
+                raise Http404
+            try:
+                excluir_bem_material(sitio_id)
+                invalidate_bens_cache()
+                from django.contrib import messages as _messages
+                _messages.success(request, "Bem material excluído com sucesso.")
+                return redirect("pesquisa-lista")
+            except ApiError as exc:
+                from django.contrib import messages as _messages
+                _messages.error(request, f"Não foi possível excluir o bem material: {exc}")
+                return redirect("pesquisa-detalhe", sitio_id=sitio_id)
+
     try:
         published_sites = [_site_payload(site) for site in fetch_all_bens_materiais()]
     except ApiError:
@@ -376,14 +421,6 @@ def site_detail(request, sitio_id):
     except ApiError:
         artigos = []
 
-    is_curador_or_admin = (
-        request.user.is_authenticated
-        and (
-            request.user.is_superuser
-            or getattr(request.user, "perfil", None) in ("admin", "curador")
-        )
-    )
-
     colaboradores: list = []
     colaboradores_erro: str = ""
     try:
@@ -396,6 +433,13 @@ def site_detail(request, sitio_id):
             _colabs_exc.status_code,
         )
         colaboradores_erro = f"HTTP {_colabs_exc.status_code}: {_colabs_exc.message}"
+
+    curadores_list: list = []
+    if is_curador_or_admin:
+        try:
+            curadores_list = fetch_curadores()
+        except ApiError:
+            pass
 
     site_geometry_geojson = ""
     if current_site.geometry:
@@ -420,6 +464,7 @@ def site_detail(request, sitio_id):
             "colaboradores": colaboradores,
             "colaboradores_erro": colaboradores_erro,
             "is_curador_or_admin": is_curador_or_admin,
+            "curadores_list": curadores_list,
         },
     )
 

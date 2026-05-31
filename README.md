@@ -41,6 +41,11 @@ A tela de detalhe possui abas que expõem informações complementares do sítio
 
 A aba **Colaboradores** consome `GET /mobile/bens-materiais/{id}/colaboradores`. Retorna uma linha por usuário por tipo de contribuição — um mesmo usuário pode aparecer como "Coleta de campo" e "Artigo científico" se tiver contribuído nos dois fluxos. Se a API retornar erro, a mensagem é exibida na tela (com log `WARNING` no servidor) em vez de falhar silenciosamente.
 
+**Ações administrativas** visíveis apenas para curador e admin (abaixo do controle de publicação):
+
+- **Curador responsável** — exibe o responsável atual pelo sítio e oferece um seletor para alterá-lo. Qualquer curador ou admin pode trocar o responsável; a mudança é registrada em auditoria com os nomes dos envolvidos (não apenas UUIDs). O seletor é populado via `GET /admin/usuarios/curadores`.
+- **Excluir bem material** — botão com confirmação JS que aciona `DELETE /admin/bens-materiais/{id}`. O registro é removido por soft delete (`deleted_at`) e a operação é registrada automaticamente como `exclusao` no log de auditoria.
+
 ### Autenticação
 O header expõe um popover de login. Além do login padrão, há suporte a:
 
@@ -78,8 +83,8 @@ Histórico completo de operações. A listagem (`audit_logs`) exibe labels espec
 **Tela de detalhe** (`audit_detail`):
 
 - **Tabela de campos** — para auditorias vinculadas a uma curadoria, exibe os campos da coleta com status individual: `Aprovado` (verde), `Não aplicado` (cinza) ou `Rejeitado` (vermelho). Para auditorias manuais, mantém a comparação antes/depois tradicional.
-- **Barra de resumo** — exibe o resultado da curadoria vinculada (aprovado/rejeitado) com badge colorido.
-- **Modal de snapshot** — exibe o estado anterior do registro em cards por seção. Para operações de **Alteração**, o botão "Ver mudanças" alterna para a visão do estado resultante com campos alterados destacados em azul. Para **Inserção**, o botão "Ver o que foi adicionado" revela os dados criados. Para **Rejeição**, exibe mensagem informando que nenhuma alteração foi feita.
+- **Barra de resumo** — exibe o resultado da curadoria vinculada (aprovado/rejeitado) com badge colorido. O badge fica vermelho para operações de **Exclusão**.
+- **Modal de snapshot** — exibe o estado anterior do registro em cards por seção. Para operações de **Alteração**, o botão "Ver mudanças" alterna para a visão do estado resultante com campos alterados destacados em azul. Para **Inserção**, o botão "Ver o que foi adicionado" revela os dados criados. Para **Rejeição**, exibe mensagem informando que nenhuma alteração foi feita. Para **Exclusão**, exibe banner vermelho "Registro excluído" com o último estado do sítio antes da deleção — o botão "Ver mudanças" não aparece neste caso.
 
 ---
 
@@ -243,11 +248,11 @@ API_BASE_URL=https://sistemaarqueologicoapi-production.up.railway.app/api/v1
 
 ## Perfis de Acesso
 
-| Perfil | Pesquisa pública | Aba Colaboradores | Fila de curadoria | Auditoria |
-|---|---|---|---|---|
-| Guest (sem conta) | ✅ | ❌ | ❌ | ❌ |
-| `coletor` | ✅ | ✅ | ❌ | ❌ |
-| `curador` | ✅ | ✅ | ✅ | ✅ |
-| `admin` | ✅ | ✅ | ✅ | ✅ |
+| Perfil | Pesquisa pública | Aba Colaboradores | Fila de curadoria | Auditoria | Publicar / Excluir bem | Curador responsável |
+|---|---|---|---|---|---|---|
+| Guest (sem conta) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `coletor` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `curador` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `admin` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 Os perfis são gerenciados pela API — o painel web reflete o perfil retornado no login.

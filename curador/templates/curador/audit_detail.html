@@ -336,7 +336,10 @@
                 </div>
                 <div class="summary-item">
                     <span class="label-caps">Operação</span>
-                    <span class="status-badge">{{ audit_entry.operacao|default:"-"|upper }}</span>
+                    <span class="status-badge"
+                          {% if audit_entry.operacao == 'exclusao' %}style="background:#fee2e2; color:#991b1b;"{% endif %}>
+                        {{ audit_entry.operacao|default:"-"|upper }}
+                    </span>
                 </div>
                 {% if audit_entry.curadoria and audit_entry.curadoria.status %}
                 <div class="summary-item">
