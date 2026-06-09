@@ -79,9 +79,15 @@
                         <td><span class="status-pill">{{ item.get_status_display }}</span></td>
                         <td>
                             <div class="actions-cell">
-                                <a class="btn-action" href="{% url 'curadoria-revisao' curadoria_id=item.id %}" title="Abrir revisão">👁</a>
-                                <button class="btn-action" type="button" title="Aprovar">✔</button>
-                                <button class="btn-action" type="button" title="Rejeitar">✖</button>
+                                <a class="btn-action" href="{% url 'curadoria-revisao' curadoria_id=item.id %}" title="Abrir revisão">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                </a>
+                                <button class="btn-action" type="button" title="Aprovar">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
+                                <button class="btn-action" type="button" title="Rejeitar">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
                             </div>
                         </td>
                     </tr>

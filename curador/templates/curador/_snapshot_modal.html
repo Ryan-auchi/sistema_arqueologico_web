@@ -220,10 +220,55 @@
                 {% endif %}
             {% endif %}
 
+            {% if restaurar_url %}
+            <button type="button"
+                    onclick="abrirConfirmacaoRestaurar()"
+                    data-restaurar-url="{{ restaurar_url }}"
+                    data-tem-anterior="{% if snap_has_anterior %}1{% else %}0{% endif %}"
+                    id="snap-restaurar-btn"
+                    style="background:transparent; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                {% if snap_has_anterior %}Reverter{% else %}Excluir registro{% endif %}
+            </button>
+            {% endif %}
+
             <button type="button" onclick="fecharSnapshot()"
                     style="background:#312113; color:#fff; border:none; border-radius:4px; padding:8px 20px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
                 Fechar
             </button>
+        </div>
+    </div>
+</div>
+
+{# ── Popup de confirmação de reversão ──────────────────────────────────────── #}
+<div id="restaurar-overlay"
+     style="display:none; position:fixed; inset:0; background:rgba(30,20,10,0.65); z-index:950; align-items:center; justify-content:center; padding:24px;"
+     aria-hidden="true">
+    <div role="dialog" aria-modal="true" aria-label="Confirmar reversão"
+         style="background:#fff; border-radius:8px; width:100%; max-width:440px; box-shadow:0 20px 60px rgba(0,0,0,0.28); overflow:hidden;">
+
+        <div style="padding:24px 28px 20px;">
+            <div style="width:44px; height:44px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#991b1b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <p id="restaurar-titulo" style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 8px; font-weight:400;"></p>
+            <p id="restaurar-descricao" style="font-size:14px; color:#4e453e; line-height:1.6; margin:0;"></p>
+        </div>
+
+        <div style="padding:16px 28px; background:#f9f7f5; border-top:1px solid #EAE5E2; display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" onclick="fecharConfirmacaoRestaurar()"
+                    style="background:transparent; color:#312113; border:1px solid rgba(49,33,19,0.25); border-radius:4px; padding:8px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+                Cancelar
+            </button>
+            <form id="restaurar-form" method="post" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit"
+                        style="background:#991b1b; color:#fff; border:none; border-radius:4px; padding:8px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+                    Confirmar
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -285,5 +330,44 @@ function toggleSnapView() {
     }
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharSnapshot(); });
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        const restaurarAberto = document.getElementById('restaurar-overlay').style.display === 'flex';
+        if (restaurarAberto) {
+            fecharConfirmacaoRestaurar();
+        } else {
+            fecharSnapshot();
+        }
+    }
+});
+
+function abrirConfirmacaoRestaurar() {
+    const btn = document.getElementById('snap-restaurar-btn');
+    const url = btn.dataset.restaurarUrl;
+    const temAnterior = btn.dataset.temAnterior === '1';
+
+    const titulo = document.getElementById('restaurar-titulo');
+    const descricao = document.getElementById('restaurar-descricao');
+    const form = document.getElementById('restaurar-form');
+
+    if (temAnterior) {
+        titulo.textContent = 'Reverter para estado anterior?';
+        descricao.textContent = 'O registro será restaurado para o estado que tinha antes desta operação. Esta ação será registrada nas auditorias e não pode ser desfeita manualmente.';
+    } else {
+        titulo.textContent = 'Excluir este registro?';
+        descricao.textContent = 'Este registro foi criado nesta operação — não há estado anterior. Confirmar irá excluí-lo permanentemente (soft delete). A exclusão será registrada nas auditorias.';
+    }
+
+    form.action = url;
+
+    const el = document.getElementById('restaurar-overlay');
+    el.style.display = 'flex';
+    el.setAttribute('aria-hidden', 'false');
+}
+
+function fecharConfirmacaoRestaurar() {
+    const el = document.getElementById('restaurar-overlay');
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+}
 </script>
