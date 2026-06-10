@@ -1,21 +1,18 @@
-from unittest.mock import patch, call
+from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
 
-from pesquisa.models import Usuario
-
 from conftest import (
-    SITE_FAKE,
-    CURADORIA_COLETA_NOVA_FAKE,
-    CURADORIA_COLETA_EXISTENTE_FAKE,
-    CURADORIA_ARTIGO_NOVO_FAKE,
-    CURADORIA_ARTIGO_EXISTENTE_FAKE,
-    AUDIT_INSERCAO_FAKE,
     AUDIT_ALTERACAO_FAKE,
     AUDIT_EXCLUSAO_FAKE,
-    ARTIGO_FAKE,
+    AUDIT_INSERCAO_FAKE,
+    CURADORIA_ARTIGO_EXISTENTE_FAKE,
+    CURADORIA_ARTIGO_NOVO_FAKE,
+    CURADORIA_COLETA_EXISTENTE_FAKE,
+    CURADORIA_COLETA_NOVA_FAKE,
     PAGINACAO_VAZIA,
+    SITE_FAKE,
 )
 
 # Dicts normalizados para mocks de fetch_artigo_admin / list_artigos_admin
@@ -212,8 +209,8 @@ class TestSitiosProximos:
         assert len(result) <= 5
 
     def test_api_error_retorna_lista_vazia(self):
-        from curador.views import _sitios_proximos
         from api_client.client import ApiError
+        from curador.views import _sitios_proximos
         with patch("curador.views.fetch_all_bens_materiais", side_effect=ApiError("offline")):
             result = _sitios_proximos(-8.48, -42.60)
         assert result == []
@@ -333,6 +330,25 @@ class TestCuradoriaFila:
         # deve retornar lista vazia pois CURADORIA_COLETA_NOVA_FAKE não tem conflito
         assert response.context["total_filtrado"] == 0
 
+    def test_get_filtro_tipo_artigo(self, client, curador_user):
+        client.force_login(curador_user)
+        with patch("curador.views.fetch_all_curadorias", return_value=(CURADORIA_ARTIGO_NOVO_FAKE,)):
+            response = client.get(reverse("curadoria-fila") + "?tipo=artigo")
+        assert response.status_code == 200
+
+    def test_get_filtro_destino_sitio_existente(self, client, curador_user):
+        client.force_login(curador_user)
+        with patch("curador.views.fetch_all_curadorias", return_value=(CURADORIA_COLETA_EXISTENTE_FAKE,)):
+            response = client.get(reverse("curadoria-fila") + "?destino=sitio_existente")
+        assert response.status_code == 200
+        assert response.context["total_filtrado"] == 1
+
+    def test_get_filtro_conflito_nao(self, client, curador_user):
+        client.force_login(curador_user)
+        with patch("curador.views.fetch_all_curadorias", return_value=(CURADORIA_COLETA_NOVA_FAKE,)):
+            response = client.get(reverse("curadoria-fila") + "?conflito=nao")
+        assert response.status_code == 200
+
     def test_get_filtro_meu_responsavel(self, client, curador_user):
         client.force_login(curador_user)
         with patch("curador.views.fetch_all_curadorias", return_value=(CURADORIA_COLETA_EXISTENTE_FAKE,)):
@@ -417,6 +433,61 @@ class TestCuradoriaRevisaoColeta:
         assert payload["acao_resultante"] == "criarSitio"
         assert response.status_code == 302
 
+    def test_post_acao_desconhecida_redireciona_de_volta(self, client, curador_user):
+        client.force_login(curador_user)
+        with patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE):
+            response = client.post(
+                reverse("curadoria-revisao", args=["cur-001"]),
+                {"action": "acao_invalida"},
+            )
+        assert response.status_code == 302
+        assert "cur-001" in response["Location"]
+
+    def test_post_api_error_redireciona_com_mensagem(self, client, curador_user):
+        from api_client.client import ApiError
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.update_curadoria_avaliacao", side_effect=ApiError("falha")),
+        ):
+            response = client.post(
+                reverse("curadoria-revisao", args=["cur-001"]),
+                {"action": "rejeitar"},
+            )
+        assert response.status_code == 302
+        assert "cur-001" in response["Location"]
+
+    def test_post_aprovar_com_selected_fields_envia_campos(self, client, curador_user):
+        import json as _json
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.update_curadoria_avaliacao", return_value={}) as mock_update,
+            patch("curador.views.invalidate_bens_cache"),
+        ):
+            client.post(
+                reverse("curadoria-revisao", args=["cur-001"]),
+                {
+                    "action": "aprovar_mesclar",
+                    "selected_fields": _json.dumps(["nome_bem"]),
+                    "published_selected": "0",
+                },
+            )
+        payload = mock_update.call_args[0][1]
+        assert "campos" in payload
+        assert "nome_bem" in payload["campos"]
+
+    def test_get_list_auditorias_api_error_ainda_renderiza(self, client, curador_user):
+        from api_client.client import ApiError
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.list_auditorias", side_effect=ApiError("offline")),
+            patch("curador.views.fetch_all_bens_materiais", return_value=()),
+        ):
+            response = client.get(reverse("curadoria-revisao", args=["cur-001"]))
+        assert response.status_code == 200
+
     def test_post_aprovar_com_bem_material_atualiza_sitio(self, client, curador_user):
         client.force_login(curador_user)
         with (
@@ -424,7 +495,7 @@ class TestCuradoriaRevisaoColeta:
             patch("curador.views.update_curadoria_avaliacao", return_value={}) as mock_update,
             patch("curador.views.invalidate_bens_cache"),
         ):
-            response = client.post(
+            client.post(
                 reverse("curadoria-revisao", args=["cur-003"]),
                 {
                     "action": "aprovar_mesclar",
@@ -489,6 +560,32 @@ class TestCuradoriaRevisaoArtigo:
         assert payload["status"] == "aprovado"
         assert response.status_code == 302
 
+    def test_post_acao_desconhecida_redireciona(self, client, curador_user):
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_ARTIGO_NOVO_FAKE),
+            patch("curador.views.fetch_artigos_por_bem", return_value=[]),
+        ):
+            response = client.post(
+                reverse("curadoria-revisao", args=["cur-002"]),
+                {"action": "acao_invalida"},
+            )
+        assert response.status_code == 302
+
+    def test_post_api_error_redireciona_com_mensagem(self, client, curador_user):
+        from api_client.client import ApiError
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_ARTIGO_NOVO_FAKE),
+            patch("curador.views.update_curadoria_avaliacao", side_effect=ApiError("falha")),
+        ):
+            response = client.post(
+                reverse("curadoria-revisao", args=["cur-002"]),
+                {"action": "aprovar_artigo"},
+            )
+        assert response.status_code == 302
+        assert "cur-002" in response["Location"]
+
     def test_post_rejeitar_artigo_redireciona(self, client, curador_user):
         client.force_login(curador_user)
         with (
@@ -545,6 +642,63 @@ class TestAuditLogs:
             response = client.get(reverse("audit-logs") + "?q=Pedra")
         assert response.status_code == 200
 
+    def test_get_filtro_artigos_passa_entidade_artigo(self, client, curador_user):
+        client.force_login(curador_user)
+        with patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)) as mock_list:
+            client.get(reverse("audit-logs") + "?filtro=artigos")
+        call_kwargs = mock_list.call_args[1]
+        assert call_kwargs.get("entidade_tipo") is not None
+
+    def test_get_filtro_aprovacoes_sitio_passa_entidade_curadoria(self, client, curador_user):
+        client.force_login(curador_user)
+        with patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)) as mock_list:
+            client.get(reverse("audit-logs") + "?filtro=aprovacoes_sitio")
+        call_kwargs = mock_list.call_args[1]
+        assert "Curadoria" in (call_kwargs.get("entidade_tipo") or "")
+
+    def test_get_audit_artigo_remocao_label(self, client, curador_user):
+        """Auditoria de ArtigoBemMaterial com operação Remoção → label REMOÇÃO-ARTIGO."""
+        client.force_login(curador_user)
+        audit_artigo = {
+            **AUDIT_INSERCAO_FAKE,
+            "id": "aud-art-1",
+            "entidade_tipo": "App\\Models\\ArtigoBemMaterial",
+            "operacao": "Remoção",
+            "valor_anterior": {"artigo_titulo": "Artigo X"},
+            "valor_novo": None,
+        }
+        with patch("curador.views.list_auditorias", return_value=([audit_artigo], {**PAGINACAO_VAZIA, "total": 1})):
+            response = client.get(reverse("audit-logs"))
+        assert response.status_code == 200
+
+    def test_get_audit_artigo_insercao_label(self, client, curador_user):
+        """Auditoria de ArtigoBemMaterial com operação Inserção → label VÍNCULO-ARTIGO."""
+        client.force_login(curador_user)
+        audit_artigo = {
+            **AUDIT_INSERCAO_FAKE,
+            "id": "aud-art-2",
+            "entidade_tipo": "App\\Models\\ArtigoBemMaterial",
+            "operacao": "Inserção",
+            "valor_novo": {"artigo_titulo": "Artigo Y", "bem_material_id": "bem-1"},
+        }
+        with patch("curador.views.list_auditorias", return_value=([audit_artigo], {**PAGINACAO_VAZIA, "total": 1})):
+            response = client.get(reverse("audit-logs"))
+        assert response.status_code == 200
+
+    def test_get_audit_curadoria_rejeicao_label(self, client, curador_user):
+        """Auditoria de Curadoria com operação Rejeição → label REJEIÇÃO."""
+        client.force_login(curador_user)
+        audit_cur = {
+            **AUDIT_INSERCAO_FAKE,
+            "id": "aud-cur-1",
+            "entidade_tipo": "App\\Models\\Curadoria",
+            "operacao": "Rejeição",
+            "valor_novo": {"nome_bem": "Sítio Rejeitado"},
+        }
+        with patch("curador.views.list_auditorias", return_value=([audit_cur], {**PAGINACAO_VAZIA, "total": 1})):
+            response = client.get(reverse("audit-logs"))
+        assert response.status_code == 200
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # audit_detail
@@ -588,6 +742,42 @@ class TestAuditDetail:
             patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
         ):
             response = client.get(reverse("audit-detail", args=["aud-001"]))
+        assert response.status_code == 200
+
+    def test_get_com_curadoria_fetch_error_ainda_renderiza(self, client, curador_user):
+        """Se fetch_curadoria falhar, audit_detail deve continuar renderizando."""
+        from api_client.client import ApiError
+        client.force_login(curador_user)
+        audit_com_curadoria = {**AUDIT_INSERCAO_FAKE, "curadoria_id": "cur-001"}
+        with (
+            patch("curador.views.fetch_auditoria", return_value=audit_com_curadoria),
+            patch("curador.views.fetch_curadoria", side_effect=ApiError("not found", 404)),
+        ):
+            response = client.get(reverse("audit-detail", args=["aud-001"]))
+        assert response.status_code == 200
+
+    def test_get_auditoria_tipo_curadoria_rejeicao_renderiza(self, client, curador_user):
+        """Auditoria de rejeição (entidade_tipo=Curadoria) popula field_status com rejeitado."""
+        client.force_login(curador_user)
+        audit_rejeicao = {
+            "id": "aud-rej",
+            "entidade_tipo": "App\\Models\\Curadoria",
+            "entidade_id": "cur-001",
+            "curadoria_id": "cur-001",
+            "operacao": "Rejeição",
+            "meio": "Curadoria",
+            "data_hora": "2026-01-04T10:00:00Z",
+            "created_at": "2026-01-04T10:00:00Z",
+            "valor_anterior": None,
+            "valor_novo": {"nome_bem": "Sítio Teste", "uf": "PI", "observacao": "Dados insuficientes"},
+            "usuario": {"id": "u1", "name": "Curador", "nome": "Curador"},
+            "curadoria": {},
+        }
+        with (
+            patch("curador.views.fetch_auditoria", return_value=audit_rejeicao),
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+        ):
+            response = client.get(reverse("audit-detail", args=["aud-rej"]))
         assert response.status_code == 200
 
     def test_get_auditoria_inexistente_retorna_404(self, client, curador_user):

@@ -3,8 +3,8 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 
-from pesquisa.models import Usuario
 from conftest import SITE_FAKE
+from pesquisa.models import Usuario
 
 
 @pytest.mark.django_db
@@ -60,6 +60,29 @@ class TestAuthLoginSuccess:
 
 
 @pytest.mark.django_db
+class TestAuthLoginUsuarioExistente:
+    """Login com usuário já existente na DB → deve atualizar os campos."""
+
+    def test_post_atualiza_perfil_de_usuario_existente(self, client, coletor_user):
+        # coletor_user já existe; o login devolve perfil curador → deve atualizar
+        _api_user = {
+            "id": "u-existente",
+            "name": "Coletor Renomeado",
+            "email": coletor_user.email,
+            "perfil": "curador",
+            "classificacao": "professor",
+        }
+        with patch("core.views.login_to_api", return_value=("token-upd", _api_user)):
+            client.post(
+                reverse("auth-login"),
+                {"email": coletor_user.email, "password": "senha123"},
+            )
+        coletor_user.refresh_from_db()
+        assert coletor_user.perfil == Usuario.PerfilUsuario.CURADOR
+        assert coletor_user.is_staff is True
+
+
+@pytest.mark.django_db
 class TestAuthLogout:
     def test_post_limpa_sessao_e_redireciona(self, client, coletor_user):
         client.force_login(coletor_user)
@@ -107,7 +130,7 @@ class TestAuthRegister:
             )
         mock_api.assert_not_called()
 
-    def test_post_api_error_exibe_erro(self, client):
+    def test_post_api_error_422_exibe_mensagem_dados_invalidos(self, client):
         from api_client.client import ApiError
 
         with patch("core.views.register_to_api", side_effect=ApiError("email já usado", 422)):
@@ -123,6 +146,45 @@ class TestAuthRegister:
             )
         assert response.status_code == 302
 
+    def test_post_api_error_500_exibe_mensagem_generica(self, client):
+        from api_client.client import ApiError
+
+        with patch("core.views.register_to_api", side_effect=ApiError("servidor indisponível", 500)):
+            response = client.post(
+                reverse("auth-register"),
+                {
+                    "name": "Z2",
+                    "email": "z2@test.com",
+                    "classificacao": "estudante",
+                    "password": "senha123",
+                    "password_confirmation": "senha123",
+                },
+            )
+        assert response.status_code == 302
+
+    def test_post_registro_atualiza_usuario_existente(self, client, coletor_user):
+        """Registro com e-mail já existente faz update em vez de criar duplicata."""
+        _api_user = {
+            "id": "u-reg",
+            "name": "Nome Atualizado",
+            "email": coletor_user.email,
+            "perfil": "coletor",
+            "classificacao": "professor",
+        }
+        with patch("core.views.register_to_api", return_value=("token-reg", _api_user)):
+            client.post(
+                reverse("auth-register"),
+                {
+                    "name": "Nome Atualizado",
+                    "email": coletor_user.email,
+                    "classificacao": "professor",
+                    "password": "senha123",
+                    "password_confirmation": "senha123",
+                },
+            )
+        coletor_user.refresh_from_db()
+        assert coletor_user.nome == "Nome Atualizado"
+
     def test_post_com_next_redireciona(self, client):
         _api_user = {"id": "u5", "name": "Z", "email": "z@test.com", "perfil": "coletor", "classificacao": "estudante"}
         with patch("core.views.register_to_api", return_value=("tok", _api_user)):
@@ -136,6 +198,13 @@ class TestAuthRegister:
                     "password_confirmation": "senha123",
                 },
             )
+        assert response.status_code == 302
+
+
+@pytest.mark.django_db
+class TestAuthPasswordResetGet:
+    def test_get_redireciona_para_home(self, client):
+        response = client.get(reverse("auth-password-reset"))
         assert response.status_code == 302
 
 

@@ -19,6 +19,7 @@ import json
 import math
 from functools import wraps
 from types import SimpleNamespace
+from typing import Any
 
 from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
