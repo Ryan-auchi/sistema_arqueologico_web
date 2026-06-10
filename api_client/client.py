@@ -352,8 +352,9 @@ _bens_cache_ts: float = 0.0
 
 def invalidate_bens_cache() -> None:
     """Force the next call to fetch_all_bens_materiais() to hit the API."""
-    global _bens_cache_ts
+    global _bens_cache_data, _bens_cache_ts
     with _bens_cache_lock:
+        _bens_cache_data = None
         _bens_cache_ts = 0.0
 
 
