@@ -553,6 +553,12 @@ def _normalize_vinculo_artigo(v: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _normalize_autores(value: Any) -> str:
+    if isinstance(value, list):
+        return ", ".join(a.get("nome_autor", "") for a in value if isinstance(a, dict) and a.get("nome_autor"))
+    return _normalize_text(value)
+
+
 def _normalize_artigo(entry: dict[str, Any]) -> dict[str, Any]:
     adicionado_por = entry.get("adicionado_por") or {}
     if isinstance(adicionado_por, dict) and adicionado_por.get("name") and not adicionado_por.get("nome"):
@@ -561,7 +567,7 @@ def _normalize_artigo(entry: dict[str, Any]) -> dict[str, Any]:
         "id": _normalize_text(entry.get("id")),
         "titulo": _normalize_text(entry.get("titulo")),
         "doi": _normalize_text(entry.get("doi")),
-        "autores": _normalize_text(entry.get("autores")),
+        "autores": _normalize_autores(entry.get("autores")),
         "ano_publicacao": entry.get("ano_publicacao"),
         "periodico": _normalize_text(entry.get("periodico")),
         "idioma": _normalize_text(entry.get("idioma")),
