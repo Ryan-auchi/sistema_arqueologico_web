@@ -182,6 +182,17 @@ def _normalize_datetime(value: Any) -> str:
     return _normalize_text(value)
 
 
+def _parse_dt(value: Any):
+    """Converte string ISO 8601 para datetime; retorna None se inválido."""
+    if not value:
+        return None
+    if hasattr(value, "year"):
+        return value
+    from django.utils.dateparse import parse_datetime
+
+    return parse_datetime(str(value).strip()) or None
+
+
 def _ensure_json_text(value: Any) -> str:
     if isinstance(value, str):
         return value
@@ -341,8 +352,9 @@ _bens_cache_ts: float = 0.0
 
 def invalidate_bens_cache() -> None:
     """Force the next call to fetch_all_bens_materiais() to hit the API."""
-    global _bens_cache_ts
+    global _bens_cache_data, _bens_cache_ts
     with _bens_cache_lock:
+        _bens_cache_data = None
         _bens_cache_ts = 0.0
 
 
@@ -519,3 +531,72 @@ def atualizar_curador_responsavel(bem_id: str, curador_responsavel_id: str | Non
 
 def excluir_bem_material(bem_id: str) -> None:
     _request("DELETE", f"/admin/bens-materiais/{bem_id}")
+
+
+def restaurar_auditoria(audit_id: str) -> dict[str, Any]:
+    return _request("POST", f"/admin/auditorias/{audit_id}/restaurar")
+
+
+def _normalize_vinculo_artigo(v: dict[str, Any]) -> dict[str, Any]:
+    bem = v.get("bem_material") or {}
+    return {
+        "id": _normalize_text(v.get("id")),
+        "tipo_mencao": _normalize_text(v.get("tipo_mencao")),
+        "trecho_relevante": _normalize_text(v.get("trecho_relevante")),
+        "bem_material_id": _normalize_text(v.get("bem_material_id")),
+        "bem_material": {
+            "id": _normalize_text(bem.get("id")),
+            "nome_bem": _normalize_text(bem.get("nome_bem")),
+            "codigo_iphan": _normalize_text(bem.get("codigo_iphan")),
+            "municipio": _normalize_text(bem.get("municipio")),
+            "uf": _normalize_text(bem.get("uf")),
+        },
+    }
+
+
+def _normalize_autores(value: Any) -> str:
+    if isinstance(value, list):
+        return ", ".join(a.get("nome_autor", "") for a in value if isinstance(a, dict) and a.get("nome_autor"))
+    return _normalize_text(value)
+
+
+def _normalize_artigo(entry: dict[str, Any]) -> dict[str, Any]:
+    adicionado_por = entry.get("adicionado_por") or {}
+    if isinstance(adicionado_por, dict) and adicionado_por.get("name") and not adicionado_por.get("nome"):
+        adicionado_por["nome"] = adicionado_por["name"]
+    return {
+        "id": _normalize_text(entry.get("id")),
+        "titulo": _normalize_text(entry.get("titulo")),
+        "doi": _normalize_text(entry.get("doi")),
+        "autores": _normalize_autores(entry.get("autores")),
+        "ano_publicacao": entry.get("ano_publicacao"),
+        "periodico": _normalize_text(entry.get("periodico")),
+        "idioma": _normalize_text(entry.get("idioma")),
+        "resumo": _normalize_text(entry.get("resumo")),
+        "link_acesso": _normalize_text(entry.get("link_acesso")),
+        "verificado": bool(entry.get("verificado")),
+        "total_vinculos": int(entry.get("vinculos_count") or 0),
+        "vinculos": [_normalize_vinculo_artigo(v) for v in (entry.get("vinculos") or [])],
+        "created_at": _parse_dt(entry.get("created_at")),
+        "updated_at": _parse_dt(entry.get("updated_at")),
+        "adicionado_por": adicionado_por if isinstance(adicionado_por, dict) else {},
+    }
+
+
+def list_artigos_admin() -> list[dict[str, Any]]:
+    payload = _request("GET", "/admin/artigos-cientificos")
+    data = payload.get("data") if isinstance(payload, dict) else payload
+    items = data if isinstance(data, list) else []
+    return [_normalize_artigo(a) for a in items if isinstance(a, dict)]
+
+
+def fetch_artigo_admin(artigo_id: str) -> dict[str, Any]:
+    payload = _request("GET", f"/admin/artigos-cientificos/{artigo_id}")
+    data = payload.get("data") if isinstance(payload, dict) and isinstance(payload.get("data"), dict) else payload
+    if not isinstance(data, dict):
+        raise ApiError("API response for artigo detail was not an object")
+    return _normalize_artigo(data)
+
+
+def excluir_artigo_admin(artigo_id: str) -> None:
+    _request("DELETE", f"/admin/artigos-cientificos/{artigo_id}")

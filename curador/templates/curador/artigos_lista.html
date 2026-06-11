@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Artigos Científicos | Stratigraphy Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+    :root {
+        --figma-brown-dark: #312113;
+        --figma-brown-light: #BA9F8B;
+        --figma-text-muted: #615E5C;
+        --figma-border: rgba(210, 196, 187, 0.2);
+    }
+
+    .shell { padding: 0; }
+
+    .main-content {
+        width: 100%;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 32px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .eyebrow {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #312113;
+        margin-bottom: 8px;
+    }
+
+    .main-title {
+        font-family: 'Newsreader', serif;
+        font-size: 30px;
+        font-weight: 400;
+        letter-spacing: -1.2px;
+        color: #312113;
+        margin-bottom: 4px;
+    }
+
+    .subtitle {
+        font-size: 14px;
+        color: #4e453e;
+    }
+
+    .stats-badges {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: rgba(78, 69, 62, 0.6);
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .table-container {
+        background: #FFFFFF;
+        border: 1px solid rgba(210, 196, 187, 0.2);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .artigos-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .artigos-table thead {
+        background: rgba(243, 244, 245, 0.5);
+        border-bottom: 1px solid rgba(210, 196, 187, 0.1);
+    }
+
+    .artigos-table th {
+        padding: 14px 20px;
+        text-align: left;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--figma-brown-dark);
+        white-space: nowrap;
+    }
+
+    .artigos-table th a {
+        color: inherit;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .artigos-table th a:hover {
+        color: #493627;
+    }
+
+    .sort-arrow {
+        font-size: 11px;
+        opacity: 0.6;
+    }
+
+    .sort-arrow.active {
+        opacity: 1;
+        color: #312113;
+    }
+
+    .artigos-table tbody tr {
+        border-bottom: 1px solid rgba(237, 238, 239, 0.5);
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+    }
+
+    .artigos-table tbody tr:hover {
+        background: rgba(241, 239, 237, 0.55);
+    }
+
+    .artigos-table td {
+        padding: 14px 20px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+    .titulo-cell {
+        font-weight: 600;
+        color: #312113;
+        max-width: 380px;
+    }
+
+    .titulo-cell p { margin: 0; }
+
+    .doi-line {
+        font-size: 11px;
+        color: #80756d;
+        font-family: 'Liberation Mono', monospace;
+        margin-top: 2px;
+    }
+
+    .muted { color: #80756d; }
+
+    .mencoes-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(73, 54, 39, 0.08);
+        border-radius: 10px;
+        padding: 2px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #493627;
+    }
+
+    .mencoes-badge.zero {
+        background: rgba(210, 196, 187, 0.2);
+        color: #80756d;
+    }
+
+    .empty-state {
+        padding: 64px 24px;
+        text-align: center;
+        color: #80756d;
+    }
+
+    .empty-state p:first-child {
+        font-family: 'Newsreader', serif;
+        font-size: 20px;
+        color: #312113;
+        margin-bottom: 8px;
+    }
+
+    @media (max-width: 720px) {
+        .main-content { padding: 16px; }
+        .artigos-table { min-width: 700px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="curadoria-layout">
+    {% include "components/sidebar.html" with active_section="artigos" %}
+
+    <main class="main-content">
+        <header class="header-section">
+            <p class="eyebrow">Biblioteca científica</p>
+            <h1 class="main-title">Artigos Científicos</h1>
+            <p class="subtitle">Todos os artigos cadastrados no sistema e seus vínculos com sítios arqueológicos.</p>
+        </header>
+
+        <div style="display:flex; justify-content:flex-end;">
+            <div class="stats-badges">
+                <div class="badge"><span class="dot" style="background:#312113;"></span> {{ total }} artigo{{ total|pluralize:"s" }}</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            {% if artigos %}
+            <div style="overflow-x:auto;">
+            <table class="artigos-table">
+                <thead>
+                    <tr>
+                        {# columns: 0=titulo 1=mencoes 2=ano 3=adicionado #}
+                        <th style="min-width:300px;">
+                            <a href="{{ columns.0.url }}">
+                                TÍTULO
+                                <span class="sort-arrow {% if columns.0.active %}active{% endif %}">{{ columns.0.arrow }}</span>
+                            </a>
+                        </th>
+                        <th>AUTORES</th>
+                        <th>PERIÓDICO</th>
+                        <th>
+                            <a href="{{ columns.2.url }}">
+                                ANO
+                                <span class="sort-arrow {% if columns.2.active %}active{% endif %}">{{ columns.2.arrow }}</span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ columns.1.url }}">
+                                MENÇÕES
+                                <span class="sort-arrow {% if columns.1.active %}active{% endif %}">{{ columns.1.arrow }}</span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ columns.3.url }}">
+                                ÚLTIMA MODIFICAÇÃO
+                                <span class="sort-arrow {% if columns.3.active %}active{% endif %}">{{ columns.3.arrow }}</span>
+                            </a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for artigo in artigos %}
+                    <tr onclick="window.location.href='{% url 'artigo-detalhe' artigo.id %}'">
+                        <td class="titulo-cell">
+                            <p>{{ artigo.titulo|default:"Sem título" }}</p>
+                            {% if artigo.doi %}<p class="doi-line">DOI: {{ artigo.doi }}</p>{% endif %}
+                        </td>
+                        <td class="muted" style="max-width:200px; font-size:13px;">{{ artigo.autores|default:"—"|truncatechars:60 }}</td>
+                        <td class="muted">{{ artigo.periodico|default:"—" }}</td>
+                        <td class="muted">{{ artigo.ano_publicacao|default:"—" }}</td>
+                        <td>
+                            <span class="mencoes-badge {% if not artigo.total_vinculos %}zero{% endif %}">
+                                {{ artigo.total_vinculos }}
+                                {% if artigo.total_vinculos == 1 %}sítio{% else %}sítios{% endif %}
+                            </span>
+                        </td>
+                        <td class="muted" style="font-size:13px; white-space:nowrap;">
+                            {{ artigo.updated_at|date:"d M Y"|default:"—" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>Nenhum artigo cadastrado</p>
+                <p>Os artigos aparecem aqui após aprovação de submissões na fila de curadoria.</p>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</section>
+{% endblock %}

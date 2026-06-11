@@ -34,6 +34,68 @@
         <input type="hidden" name="selected_fields" id="selected-fields-input" value="[]">
         <input type="hidden" name="import_media_selected" id="import-media-input" value="0">
         <input type="hidden" name="published_selected" id="published-input" value="{% if default_published %}1{% else %}0{% endif %}">
+        <input type="hidden" name="bem_material_id" id="bem-material-id-input" value="{{ bem_material_id_inicial }}">
+
+    {% if sitios_proximos %}
+    <div id="sitios-proximos-card" style="margin:0 0 24px; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:18px 22px;">
+        <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:14px;">
+            <div style="width:36px; height:36px; background:#fef3c7; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <div>
+                <p style="font-size:13px; font-weight:700; color:#92400e; margin:0 0 3px; text-transform:uppercase; letter-spacing:0.5px;">Possível duplicata</p>
+                <p style="font-size:14px; color:#78350f; margin:0; line-height:1.5;">Selecione um sítio para comparar com a coleta. Se for o mesmo, a aprovação vai atualizar esse sítio em vez de criar um novo.</p>
+            </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+
+            {# Opção da própria coleta — pré-selecionada por padrão #}
+            <button type="button"
+                    id="sitio-item-coleta"
+                    class="sitio-proximo-item"
+                    data-sitio-id=""
+                    data-sitio-nome="{{ display_nome }}"
+                    onclick="selecionarSitioProximo(this)"
+                    style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fffbeb; border:2px solid #f59e0b; border-radius:6px; padding:12px 16px; cursor:pointer; text-align:left; width:100%;">
+                <div>
+                    <p style="font-size:10px; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:0.6px; margin:0 0 3px;">O que a coleta diz ser</p>
+                    <p style="font-size:14px; font-weight:600; color:#312113; margin:0 0 2px;">{{ display_nome }}</p>
+                    <p style="font-size:12px; color:#80756d; margin:0; font-family:'Liberation Mono',monospace;">{{ incoming_data.codigo_iphan|default:"IPHAN não informado" }}</p>
+                </div>
+                <span style="font-size:11px; font-weight:700; color:#92400e; background:#fef3c7; border-radius:20px; padding:3px 10px; white-space:nowrap; flex-shrink:0;">
+                    nova entrada
+                </span>
+            </button>
+
+            {# Sítios cadastrados próximos #}
+            {% for sitio in sitios_proximos %}
+            <button type="button"
+                    class="sitio-proximo-item"
+                    data-sitio-id="{{ sitio.id }}"
+                    data-sitio-nome="{{ sitio.nome_bem|default:'Sem nome' }}"
+                    onclick="selecionarSitioProximo(this)"
+                    style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:1px solid #fcd34d; border-radius:6px; padding:12px 16px; cursor:pointer; text-align:left; width:100%; transition:border-color 0.15s, background 0.15s;">
+                <div>
+                    <p style="font-size:10px; font-weight:700; color:#80756d; text-transform:uppercase; letter-spacing:0.6px; margin:0 0 3px;">Sítio cadastrado</p>
+                    <p style="font-size:14px; font-weight:600; color:#312113; margin:0 0 2px;">{{ sitio.nome_bem|default:"Sem nome" }}</p>
+                    <p style="font-size:12px; color:#80756d; margin:0; font-family:'Liberation Mono',monospace;">{{ sitio.codigo_iphan|default:"IPHAN não informado" }}</p>
+                </div>
+                <span class="distancia-badge" style="font-size:11px; font-weight:700; color:#92400e; background:#fef3c7; border-radius:20px; padding:3px 10px; white-space:nowrap; flex-shrink:0;">
+                    {{ sitio.distancia_km|floatformat:1 }} km
+                </span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+    const SITIOS_PROXIMOS_DATA = {{ sitios_proximos_json|safe }};
+    </script>
+    {% endif %}
 
     <section class="split-screen-canvas">
         <div class="comparison-head">
@@ -49,8 +111,8 @@
         <div class="comparison-head official">
             <div class="panel-header">
                 <div>
-                    <p class="panel-subtitle">Registro oficial atual</p>
-                    <h2 class="panel-title">Registro mestre</h2>
+                    <p class="panel-subtitle" id="official-panel-subtitle">Registro oficial atual</p>
+                    <h2 class="panel-title" id="official-panel-title">Registro mestre</h2>
                 </div>
                 <div class="badge-status">Mensagem validada</div>
             </div>
@@ -58,16 +120,18 @@
 
         <div class="comparison-matrix">
             {% for item in comparisons %}
-                <div class="comparison-row">
-                    <div class="field-box incoming {% if item.is_new_field %}new-data{% elif item.is_different %}conflict{% endif %}">
+                <div class="comparison-row"
+                     data-field-name="{{ item.field_name }}"
+                     data-incoming-value="{{ item.incoming_value }}">
+                    <div class="field-box incoming js-incoming-box {% if item.is_new_field %}new-data{% elif item.is_different %}conflict{% endif %}">
                         <div class="field-header">
                             <span class="field-label">{{ item.label }}</span>
                             {% if item.is_new_field %}
-                                <span class="field-tag">NOVO CAMPO</span>
+                                <span class="field-tag js-incoming-tag">NOVO CAMPO</span>
                             {% elif item.is_different %}
-                                <span class="field-tag conflict-text">CONFLITO</span>
+                                <span class="field-tag conflict-text js-incoming-tag">CONFLITO</span>
                             {% else %}
-                                <span class="field-tag">MESMO VALOR</span>
+                                <span class="field-tag js-incoming-tag">MESMO VALOR</span>
                             {% endif %}
                         </div>
 
@@ -83,21 +147,22 @@
                                 <span class="field-label">{{ item.label }}</span>
                                 {% if official_record_exists %}
                                     {% if item.is_new_field %}
-                                        <span class="field-tag conflict-text">SEM REGISTRO</span>
+                                        <span class="field-tag conflict-text js-official-tag" data-original-tag="SEM REGISTRO" data-original-tag-class="conflict-text">SEM REGISTRO</span>
                                     {% elif item.is_different %}
-                                        <span class="field-tag">VALOR OFICIAL</span>
+                                        <span class="field-tag js-official-tag" data-original-tag="VALOR OFICIAL" data-original-tag-class="">VALOR OFICIAL</span>
                                     {% else %}
-                                        <span class="field-tag">REGISTRO ATUAL</span>
+                                        <span class="field-tag js-official-tag" data-original-tag="REGISTRO ATUAL" data-original-tag-class="">REGISTRO ATUAL</span>
                                     {% endif %}
                                 {% else %}
-                                    <span class="field-tag conflict-text">SEM REGISTRO</span>
+                                    <span class="field-tag conflict-text js-official-tag" data-original-tag="SEM REGISTRO" data-original-tag-class="conflict-text">SEM REGISTRO</span>
                                 {% endif %}
                             </div>
 
-                            <div class="field-value">{% if official_record_exists %}{{ item.official_value|default:"Não informado" }}{% else %}Não informado{% endif %}</div>
+                            <div class="field-value js-official-value"
+                                 data-original-value="{% if official_record_exists %}{{ item.official_value|default:'' }}{% endif %}">{% if official_record_exists %}{{ item.official_value|default:"Não informado" }}{% else %}Não informado{% endif %}</div>
 
                             {% if not official_record_exists and forloop.first %}
-                                <div class="field-note">Nenhum registro oficial aprovado para este sítio.</div>
+                                <div class="field-note js-official-note">Nenhum registro oficial aprovado para este sítio.</div>
                             {% endif %}
                         </div>
                 </div>

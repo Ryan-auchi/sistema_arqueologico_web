@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ artigo.titulo|default:"Artigo" }} | Artigos Científicos{% endblock %}
+
+{% block extra_head %}
+<style>
+    .shell { padding: 0; }
+
+    .main-content {
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #80756d;
+        text-decoration: none;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+    }
+    .back-link:hover { color: #312113; }
+
+    .eyebrow {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #80756d;
+        margin: 0 0 6px;
+    }
+
+    .article-title {
+        font-family: 'Newsreader', serif;
+        font-size: 26px;
+        font-weight: 400;
+        color: #312113;
+        margin: 0;
+        line-height: 1.35;
+    }
+
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 24px;
+        align-items: start;
+    }
+
+    .card {
+        background: #fff;
+        border: 1px solid rgba(210, 196, 187, 0.25);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .card-section {
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(210, 196, 187, 0.15);
+    }
+    .card-section:last-child { border-bottom: none; }
+
+    .section-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #80756d;
+        margin: 0 0 14px;
+    }
+
+    .field-row {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 8px 16px;
+        margin-bottom: 10px;
+        align-items: baseline;
+    }
+    .field-row:last-child { margin-bottom: 0; }
+
+    .field-key {
+        font-size: 11px;
+        font-weight: 700;
+        color: #80756d;
+        text-transform: uppercase;
+    }
+
+    .field-val {
+        font-size: 14px;
+        color: #312113;
+    }
+
+    .field-val a { color: #312113; }
+    .field-val a:hover { text-decoration: underline; }
+
+    .resumo-text {
+        font-family: 'Liberation Serif', serif;
+        font-size: 14px;
+        line-height: 1.7;
+        color: #4e453e;
+        margin: 0;
+    }
+
+    /* Sítios vinculados */
+    .vinculo-item {
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(210, 196, 187, 0.15);
+    }
+    .vinculo-item:last-child { border-bottom: none; }
+
+    .vinculo-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .vinculo-nome {
+        font-size: 14px;
+        font-weight: 600;
+        color: #312113;
+        margin: 0 0 2px;
+    }
+
+    .vinculo-iphan {
+        font-size: 11px;
+        color: #80756d;
+        font-family: 'Liberation Mono', monospace;
+    }
+
+    .mencao-badge {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background: rgba(73, 54, 39, 0.08);
+        color: #493627;
+        border-radius: 10px;
+        padding: 3px 10px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .trecho-box {
+        margin: 0;
+        padding: 10px 14px;
+        border-left: 3px solid #c9b49a;
+        font-style: italic;
+        font-size: 13px;
+        color: #4e453e;
+        background: #f9f7f5;
+        border-radius: 0 4px 4px 0;
+        line-height: 1.6;
+    }
+
+    .empty-vinculos {
+        padding: 32px 24px;
+        text-align: center;
+        color: #80756d;
+        font-size: 14px;
+    }
+
+    /* Painel de ações */
+    .panel-card {
+        background: #fff;
+        border: 1px solid rgba(210, 196, 187, 0.25);
+        border-radius: 6px;
+        padding: 20px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .panel-title {
+        font-family: 'Newsreader', serif;
+        font-size: 18px;
+        font-weight: 400;
+        color: #312113;
+        margin: 0;
+    }
+
+    .meta-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        font-size: 13px;
+        color: #4e453e;
+    }
+
+    .meta-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: #80756d;
+    }
+
+    .btn-delete {
+        width: 100%;
+        background: transparent;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+        border-radius: 4px;
+        padding: 10px 16px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        text-align: center;
+    }
+    .btn-delete:hover { background: #fee2e2; }
+
+    @media (max-width: 860px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="curadoria-layout">
+    {% include "components/sidebar.html" with active_section="artigos" %}
+
+    <main class="main-content">
+        <a class="back-link" href="{% url 'artigos-lista' %}">← Artigos científicos</a>
+
+        <header>
+            <p class="eyebrow">Artigo científico</p>
+            <h1 class="article-title">{{ artigo.titulo|default:"Sem título" }}</h1>
+        </header>
+
+        <div class="content-grid">
+
+            <!-- Informações do artigo + sítios vinculados -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+
+                <div class="card">
+                    <div class="card-section">
+                        <p class="section-label">Identificação</p>
+
+                        {% if artigo.doi %}
+                        <div class="field-row">
+                            <span class="field-key">DOI</span>
+                            <span class="field-val">
+                                <a href="https://doi.org/{{ artigo.doi }}" target="_blank" rel="noopener">{{ artigo.doi }}</a>
+                            </span>
+                        </div>
+                        {% endif %}
+
+                        {% if artigo.autores %}
+                        <div class="field-row">
+                            <span class="field-key">Autores</span>
+                            <span class="field-val">{{ artigo.autores }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if artigo.ano_publicacao %}
+                        <div class="field-row">
+                            <span class="field-key">Ano</span>
+                            <span class="field-val">{{ artigo.ano_publicacao }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if artigo.periodico %}
+                        <div class="field-row">
+                            <span class="field-key">Periódico</span>
+                            <span class="field-val">{{ artigo.periodico }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if artigo.idioma %}
+                        <div class="field-row">
+                            <span class="field-key">Idioma</span>
+                            <span class="field-val">{{ artigo.idioma|upper }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if artigo.link_acesso %}
+                        <div class="field-row">
+                            <span class="field-key">Link</span>
+                            <span class="field-val">
+                                <a href="{{ artigo.link_acesso }}" target="_blank" rel="noopener">{{ artigo.link_acesso|truncatechars:60 }}</a>
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if artigo.resumo %}
+                    <div class="card-section">
+                        <p class="section-label">Resumo</p>
+                        <p class="resumo-text">{{ artigo.resumo }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Sítios vinculados -->
+                <div class="card">
+                    <div class="card-section" style="border-bottom:1px solid rgba(210,196,187,0.2);">
+                        <p class="section-label" style="margin-bottom:0;">
+                            Sítios vinculados
+                            <span style="background:rgba(73,54,39,0.08); border-radius:10px; padding:2px 8px; font-size:11px; font-weight:700; color:#493627; margin-left:8px;">{{ total_vinculos }}</span>
+                        </p>
+                    </div>
+
+                    {% if vinculos %}
+                        {% for v in vinculos %}
+                        <div class="vinculo-item">
+                            <div class="vinculo-header">
+                                <div>
+                                    <p class="vinculo-nome">{{ v.bem_material.nome_bem|default:"Sítio sem nome" }}</p>
+                                    <p class="vinculo-iphan">
+                                        {{ v.bem_material.codigo_iphan|default:"IPHAN não informado" }}
+                                        {% if v.bem_material.municipio %} · {{ v.bem_material.municipio }}{% if v.bem_material.uf %}/{{ v.bem_material.uf }}{% endif %}{% endif %}
+                                    </p>
+                                </div>
+                                <span class="mencao-badge">{{ v.tipo_mencao_label|default:v.tipo_mencao }}</span>
+                            </div>
+
+                            {% if v.trecho_relevante %}
+                            <blockquote class="trecho-box">{{ v.trecho_relevante }}</blockquote>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="empty-vinculos">
+                        Este artigo ainda não está vinculado a nenhum sítio.
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+
+            <!-- Painel lateral de ações -->
+            <aside style="display:flex; flex-direction:column; gap:16px;">
+
+                <div class="panel-card">
+                    <h2 class="panel-title">Informações</h2>
+
+                    {% if artigo.created_at %}
+                    <div>
+                        <p class="meta-label">Adicionado em</p>
+                        <p class="meta-row">{{ artigo.created_at|date:"d M Y" }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if artigo.adicionado_por.nome %}
+                    <div>
+                        <p class="meta-label">Adicionado por</p>
+                        <p class="meta-row">{{ artigo.adicionado_por.nome }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div>
+                        <p class="meta-label">Verificado</p>
+                        <p class="meta-row">{% if artigo.verificado %}Sim{% else %}Não{% endif %}</p>
+                    </div>
+                </div>
+
+                <div class="panel-card">
+                    <h2 class="panel-title" style="color:#991b1b;">Zona de perigo</h2>
+                    <p style="font-size:13px; color:#4e453e; margin:0; line-height:1.5;">
+                        Excluir este artigo removerá permanentemente todos os vínculos com sítios cadastrados.
+                    </p>
+                    <button type="button" class="btn-delete" onclick="abrirConfirmacaoExcluir()">
+                        Excluir artigo
+                    </button>
+                </div>
+
+            </aside>
+        </div>
+    </main>
+</section>
+
+{# ── Popup de confirmação de exclusão ─────────────────────────────────────── #}
+<div id="excluir-overlay"
+     style="display:none; position:fixed; inset:0; background:rgba(30,20,10,0.65); z-index:950; align-items:center; justify-content:center; padding:24px;"
+     aria-hidden="true">
+    <div role="dialog" aria-modal="true"
+         style="background:#fff; border-radius:8px; width:100%; max-width:440px; box-shadow:0 20px 60px rgba(0,0,0,0.28); overflow:hidden;">
+
+        <div style="padding:24px 28px 20px;">
+            <div style="width:44px; height:44px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#991b1b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+            </div>
+            <p style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 8px; font-weight:400;">
+                Excluir este artigo?
+            </p>
+            <p style="font-size:14px; color:#4e453e; line-height:1.6; margin:0;">
+                {% if total_vinculos > 0 %}
+                    Este artigo está vinculado a <strong>{{ total_vinculos }} sítio{{ total_vinculos|pluralize:"s" }}</strong>.
+                    Excluir removerá o artigo e <strong>todos os {{ total_vinculos }} vínculo{{ total_vinculos|pluralize:"s" }}</strong> permanentemente.
+                {% else %}
+                    Este artigo não possui vínculos. Ele será excluído permanentemente.
+                {% endif %}
+            </p>
+        </div>
+
+        <div style="padding:16px 28px; background:#f9f7f5; border-top:1px solid #EAE5E2; display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" onclick="fecharConfirmacaoExcluir()"
+                    style="background:transparent; color:#312113; border:1px solid rgba(49,33,19,0.25); border-radius:4px; padding:8px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+                Cancelar
+            </button>
+            <form method="post" action="{{ excluir_url }}" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit"
+                        style="background:#991b1b; color:#fff; border:none; border-radius:4px; padding:8px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+                    Confirmar exclusão
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirConfirmacaoExcluir() {
+    const el = document.getElementById('excluir-overlay');
+    el.style.display = 'flex';
+    el.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharConfirmacaoExcluir() {
+    const el = document.getElementById('excluir-overlay');
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharConfirmacaoExcluir(); });
+document.getElementById('excluir-overlay').addEventListener('click', function(e) {
+    if (e.target === this) fecharConfirmacaoExcluir();
+});
+</script>
+{% endblock %}

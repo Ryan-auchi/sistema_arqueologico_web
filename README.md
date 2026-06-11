@@ -123,6 +123,11 @@ Histórico completo de operações. A listagem (`audit_logs`) exibe labels espec
 - **Tabela de campos** — para auditorias vinculadas a uma curadoria, exibe os campos da coleta com status individual: `Aprovado` (verde), `Não aplicado` (cinza) ou `Rejeitado` (vermelho). Para auditorias manuais, mantém a comparação antes/depois tradicional.
 - **Barra de resumo** — exibe o resultado da curadoria vinculada (aprovado/rejeitado) com badge colorido. O badge fica vermelho para operações de **Exclusão**.
 - **Modal de snapshot** — exibe o estado anterior do registro em cards por seção. Para operações de **Alteração**, o botão "Ver mudanças" alterna para a visão do estado resultante com campos alterados destacados em azul. Para **Inserção**, o botão "Ver o que foi adicionado" revela os dados criados. Para **Rejeição**, exibe mensagem informando que nenhuma alteração foi feita. Para **Exclusão**, exibe banner vermelho "Registro excluído" com o último estado do sítio antes da deleção — o botão "Ver mudanças" não aparece neste caso.
+- **Reversão de operação** — disponível para auditorias de `Inserção` e `Alteração` em bens materiais. O botão "Reverter operação" aciona `POST /admin/auditorias/{id}/restaurar`: inserções são revertidas via soft delete do bem criado; alterações restauram os valores anteriores. Coordenadas geográficas são sincronizadas com PostGIS automaticamente.
+
+**Listagem de artigos científicos** (`artigos_lista`):
+
+Acessível via `/curador/artigos-cientificos/`. Exibe todos os artigos cadastrados com título, autores, periódico, ano e contagem de sítios vinculados. A tela de detalhe de cada artigo lista os bens materiais vinculados com tipo de menção e trecho relevante. Curadores e administradores podem excluir artigos — a exclusão remove todos os vínculos e registra auditoria de Exclusão.
 
 ---
 
@@ -251,11 +256,19 @@ O painel estará disponível em **http://localhost:8000**.
 ## Testes
 
 ```bash
-# Instala dependências de desenvolvimento
-pip install -r requirements-dev.txt
+# Instala as dependências (inclui pytest e pytest-cov)
+pip install -r requirements.txt
+pip install pytest-cov
+
+# Configura o banco em memória para testes (adicionar ao .env se não existir)
+echo "DB_ENGINE=django.db.backends.sqlite3" >> .env
+echo "DB_NAME=:memory:" >> .env
 
 # Roda os testes
 pytest --tb=short
+
+# Com relatório de cobertura
+pytest --cov=. --cov-report=term-missing -q
 ```
 
 ### CI

@@ -16,9 +16,9 @@
     <div class="review-header">
         <p class="eyebrow">Revisão de submissão</p>
         <h1 class="review-title">{{ submissao.titulo|default:"Artigo sem título" }}</h1>
-        <span class="type-badge">📄 Artigo científico</span>
+        <span class="type-badge">Artigo científico</span>
         {% if bem_material %}
-            <span class="type-badge" style="margin-left:8px;">📍 {{ bem_material.codigo_iphan|default:"Bem não informado" }}</span>
+            <span class="type-badge" style="margin-left:8px;">{{ bem_material.codigo_iphan|default:"Bem não informado" }}</span>
         {% endif %}
     </div>
 
@@ -113,12 +113,19 @@
                 {% endif %}
             </div>
 
-            {% if submissao.artigo_id %}
+            {% if vinculo_existente %}
+            <div class="card-section" style="background: rgba(254, 243, 199, 0.5); border-left: 3px solid #f59e0b;">
+                <p class="section-label" style="color: #92400e;">Citação já existente</p>
+                <p style="font-size: 13px; color: #78350f; line-height: 1.5; margin: 0;">
+                    Este artigo já está vinculado a este sítio. Ao aprovar, a citação existente será
+                    <strong>substituída</strong> pelo novo tipo de menção e trecho informados nesta submissão.
+                </p>
+            </div>
+            {% elif submissao.artigo_id %}
             <div class="card-section" style="background: rgba(220, 252, 231, 0.3);">
                 <p class="section-label" style="color: #166534;">Artigo já cadastrado</p>
                 <p style="font-size: 13px; color: #166534;">
-                    Este artigo já existe na base (id: <code>{{ submissao.artigo_id }}</code>).
-                    Ao aprovar, apenas o vínculo com o bem material será criado.
+                    Este artigo já existe na base. Ao aprovar, apenas o vínculo com o bem material será criado.
                 </p>
             </div>
             {% else %}
@@ -145,17 +152,22 @@
                 </div>
 
                 {% if curadoria.status == "pendente" %}
-                <form method="post">
+                <form method="post" id="artigo-decisao-form">
                     {% csrf_token %}
                     <span class="obs-label">Observação (opcional)</span>
                     <textarea class="obs-textarea" name="observacao" placeholder="Notas para o submissor...">{{ curadoria.observacao }}</textarea>
 
-                    <button type="submit" name="action" value="aprovar_artigo" class="btn-approve">
-                        ✔ Aprovar vínculo
+                    {% if vinculo_existente %}
+                    <button type="button" class="btn-approve" onclick="abrirPopupSubstituir()">
+                        Substituir citação existente
                     </button>
-                    <button type="submit" name="action" value="rejeitar" class="btn-reject"
-                            onclick="return confirm('Confirmar rejeição?')">
-                        ✖ Rejeitar submissão
+                    {% else %}
+                    <button type="submit" name="action" value="aprovar_artigo" class="btn-approve">
+                        Aprovar vínculo
+                    </button>
+                    {% endif %}
+                    <button type="submit" name="action" value="rejeitar" class="btn-reject">
+                        Rejeitar submissão
                     </button>
                 </form>
                 {% else %}
@@ -175,4 +187,74 @@
     </div>
 
 </div>
+
+{% if vinculo_existente %}
+{# ── Popup de confirmação de substituição ──────────────────────────────── #}
+<div id="popup-substituir"
+     style="display:none; position:fixed; inset:0; background:rgba(30,20,10,0.65); z-index:950; align-items:center; justify-content:center; padding:24px;"
+     aria-hidden="true"
+     onclick="if(event.target===this) fecharPopupSubstituir()">
+    <div role="dialog" aria-modal="true"
+         style="background:#fff; border-radius:8px; width:100%; max-width:440px; box-shadow:0 20px 60px rgba(0,0,0,0.28); overflow:hidden;">
+
+        <div style="padding:24px 28px 20px;">
+            <div style="width:44px; height:44px; background:#fef3c7; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <p style="font-family:'Newsreader',serif; font-size:18px; color:#312113; margin:0 0 8px; font-weight:400;">
+                Substituir citação existente?
+            </p>
+            <p style="font-size:14px; color:#4e453e; line-height:1.6; margin:0;">
+                Este artigo já está vinculado a este sítio. Confirmar irá sobrescrever o tipo de menção
+                e o trecho relevante já cadastrados.
+            </p>
+        </div>
+
+        <div style="padding:16px 28px; background:#f9f7f5; border-top:1px solid #EAE5E2; display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" onclick="fecharPopupSubstituir()"
+                    style="background:transparent; color:#312113; border:1px solid rgba(49,33,19,0.25); border-radius:4px; padding:8px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+                Cancelar
+            </button>
+            <button type="button" onclick="confirmarSubstituir()"
+                    style="background:#312113; color:#fff; border:none; border-radius:4px; padding:8px 18px; font-size:12px; font-weight:700; cursor:pointer;">
+                Confirmar substituição
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirPopupSubstituir() {
+    const el = document.getElementById('popup-substituir');
+    el.style.display = 'flex';
+    el.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharPopupSubstituir() {
+    const el = document.getElementById('popup-substituir');
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+}
+
+function confirmarSubstituir() {
+    const form = document.getElementById('artigo-decisao-form');
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'action';
+    input.value = 'aprovar_artigo';
+    form.appendChild(input);
+    form.submit();
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') fecharPopupSubstituir();
+});
+</script>
+{% endif %}
+
 {% endblock %}

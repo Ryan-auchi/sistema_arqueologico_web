@@ -16,24 +16,34 @@ Fluxo:
 from __future__ import annotations
 
 import json
+import math
 from functools import wraps
 from types import SimpleNamespace
+from typing import Any
 
 from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.dateparse import parse_datetime
+from django.views.decorators.http import require_POST
 
 from api_client.client import (
     ApiError,
+    excluir_artigo_admin,
+    fetch_all_bens_materiais,
     fetch_all_curadorias,
+    fetch_artigo_admin,
+    fetch_artigos_por_bem,
     fetch_auditoria,
     fetch_curadoria,
     invalidate_bens_cache,
+    list_artigos_admin,
     list_auditorias,
     normalize_bem_material,
+    restaurar_auditoria,
     update_curadoria_avaliacao,
 )
 from pesquisa.models import Usuario
@@ -132,6 +142,44 @@ def _field_label(field_name: str) -> str:
         "trecho_relevante": "Trecho relevante",
     }
     return labels.get(field_name, field_name.replace("_", " ").title())
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Geolocalização
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _sitios_proximos(lat: float, lng: float, *, raio_km: float = 10.0, excluir_id: str | None = None) -> list[dict]:
+    try:
+        bens = fetch_all_bens_materiais()
+    except ApiError:
+        return []
+
+    resultados = []
+    for bem in bens:
+        if excluir_id and str(bem.get("id")) == str(excluir_id):
+            continue
+        blat = bem.get("latitude")
+        blng = bem.get("longitude")
+        if blat is None or blng is None:
+            continue
+        try:
+            dist = _haversine_km(lat, lng, float(blat), float(blng))
+        except (TypeError, ValueError):
+            continue
+        if dist <= raio_km:
+            resultados.append({**bem, "distancia_km": dist})
+
+    resultados.sort(key=lambda x: x["distancia_km"])
+    return resultados[:5]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -686,6 +734,18 @@ def _handle_revisao_artigo(request, curadoria_id: str, curadoria_raw: dict):
     tipo_mencao_raw = submissao.get("tipo_mencao") or ""
     tipo_mencao_label = tipo_mencao_labels.get(tipo_mencao_raw, tipo_mencao_raw)
 
+    # Verifica se já existe vínculo entre este artigo e o bem material.
+    # Só faz a chamada quando ambos os IDs estão disponíveis (artigo já cadastrado).
+    vinculo_existente = False
+    artigo_id_submissao = submissao.get("artigo_id")
+    bem_id = bem_material_raw.get("id") if bem_material_raw else None
+    if artigo_id_submissao and bem_id:
+        try:
+            artigos_do_bem = fetch_artigos_por_bem(bem_id)
+            vinculo_existente = any(str(a.get("id")) == str(artigo_id_submissao) for a in artigos_do_bem)
+        except ApiError:
+            pass
+
     return render(
         request,
         "curador/curadoria_revisao_artigo.html",
@@ -696,6 +756,7 @@ def _handle_revisao_artigo(request, curadoria_id: str, curadoria_raw: dict):
             "tipo_mencao_label": tipo_mencao_label,
             "bem_material": _namespace(normalize_bem_material(bem_material_raw)) if bem_material_raw else None,
             "bem_material_raw": bem_material_raw,
+            "vinculo_existente": vinculo_existente,
         },
     )
 
@@ -800,6 +861,20 @@ def curadoria_revisao(request, curadoria_id):
     official_site = _namespace(normalize_bem_material(official_site_raw)) if official_site_raw else None
     comparisons = _build_comparisons(curadoria_raw)
 
+    # Sítios próximos às coordenadas da coleta (para sugestão de associação).
+    sitios_proximos: list[dict] = []
+    coleta_lat = incoming_data.get("latitude")
+    coleta_lng = incoming_data.get("longitude")
+    if coleta_lat and coleta_lng:
+        try:
+            sitios_proximos = _sitios_proximos(
+                float(coleta_lat),
+                float(coleta_lng),
+                excluir_id=curadoria_raw.get("bem_material_id"),
+            )
+        except (TypeError, ValueError):
+            pass
+
     # Auditorias relacionadas à curadoria.
     audit_entries = []
     page = 1
@@ -851,6 +926,16 @@ def curadoria_revisao(request, curadoria_id):
             "audit_entries": audit_entries,
             "merged": request.GET.get("merged") == "1",
             "default_published": bool(official_site_raw.get("publicado")) if official_site_raw else False,
+            "sitios_proximos": sitios_proximos,
+            "sitios_proximos_json": json.dumps(
+                [
+                    {k: v for k, v in s.items() if not isinstance(v, (dict, list)) or k in ("artefatos",)}
+                    for s in sitios_proximos
+                ],
+                ensure_ascii=False,
+                default=str,
+            ),
+            "bem_material_id_inicial": curadoria_raw.get("bem_material_id") or "",
         },
     )
 
@@ -1066,6 +1151,13 @@ def audit_detail(request, audit_id):
         except Exception:
             field_status = None
 
+    restaurar_url = None
+    entidade_tipo_raw = raw.get("entidade_tipo") or ""
+    operacao_raw = raw.get("operacao") or ""
+    _OPERACOES_REVERTIVEIS = {"insercao", "alteracao", "Inserção", "Alteração"}
+    if "BemMaterial" in entidade_tipo_raw and operacao_raw in _OPERACOES_REVERTIVEIS:
+        restaurar_url = reverse("restaurar-auditoria", kwargs={"audit_id": raw.get("id")})
+
     return render(
         request,
         "curador/audit_detail.html",
@@ -1079,5 +1171,124 @@ def audit_detail(request, audit_id):
             "snap_merged": snap_merged,
             "snap_changed": snap_changed,
             "snap_has_anterior": snap_has_anterior,
+            "restaurar_url": restaurar_url,
         },
     )
+
+
+@curador_or_admin_required
+@require_POST
+def restaurar_auditoria_view(request, audit_id: str):
+    try:
+        restaurar_auditoria(audit_id)
+        invalidate_bens_cache()
+        messages.success(request, "Reversão realizada com sucesso.")
+    except ApiError as exc:
+        messages.error(request, f"Não foi possível reverter: {exc}")
+    return redirect("audit-detail", audit_id=audit_id)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Artigos Científicos
+# ─────────────────────────────────────────────────────────────────────────────
+
+_TIPO_MENCAO_LABELS = {
+    "citacao": "Citação direta",
+    "estudo_aprofundado": "Estudo aprofundado",
+    "referencia_geografica": "Referência geográfica",
+    "analise_artefatos": "Análise de artefatos",
+}
+
+_ARTIGOS_SORT_KEYS: dict[str, Any] = {
+    "titulo":      lambda a: (a.get("titulo") or "").lower(),
+    "mencoes":     lambda a: a.get("total_vinculos") or 0,
+    "ano":         lambda a: a.get("ano_publicacao") or 0,
+    "modificacao": lambda a: str(a.get("updated_at") or ""),
+}
+
+
+@curador_or_admin_required
+def artigos_lista(request):
+    sort = request.GET.get("sort", "titulo")
+    direction = request.GET.get("dir", "asc")
+    if sort not in _ARTIGOS_SORT_KEYS:
+        sort = "titulo"
+    if direction not in ("asc", "desc"):
+        direction = "asc"
+
+    try:
+        artigos = list_artigos_admin()
+    except ApiError:
+        artigos = []
+        messages.warning(request, "Não foi possível carregar os artigos.")
+
+    artigos = sorted(artigos, key=_ARTIGOS_SORT_KEYS[sort], reverse=(direction == "desc"))
+
+    def _sort_url(col: str) -> str:
+        new_dir = "desc" if (sort == col and direction == "asc") else "asc"
+        return f"?sort={col}&dir={new_dir}"
+
+    def _sort_arrow(col: str) -> str:
+        if sort != col:
+            return "⇅"
+        return "▲" if direction == "asc" else "▼"
+
+    columns = [
+        {"key": "titulo",      "label": "Título"},
+        {"key": "mencoes",     "label": "Menções"},
+        {"key": "ano",         "label": "Ano"},
+        {"key": "modificacao", "label": "Última modificação"},
+    ]
+    for col in columns:
+        col["url"] = _sort_url(col["key"])
+        col["arrow"] = _sort_arrow(col["key"])
+        col["active"] = sort == col["key"]
+
+    return render(
+        request,
+        "curador/artigos_lista.html",
+        {
+            "nav_active": "artigos",
+            "artigos": artigos,
+            "columns": columns,
+            "sort": sort,
+            "direction": direction,
+            "total": len(artigos),
+        },
+    )
+
+
+@curador_or_admin_required
+def artigo_detalhe(request, artigo_id: str):
+    try:
+        artigo = fetch_artigo_admin(artigo_id)
+    except ApiError:
+        raise Http404("Artigo não encontrado")
+
+    for v in artigo.get("vinculos") or []:
+        v["tipo_mencao_label"] = _TIPO_MENCAO_LABELS.get(v.get("tipo_mencao") or "", v.get("tipo_mencao") or "")
+
+    excluir_url = reverse("excluir-artigo", kwargs={"artigo_id": artigo_id})
+
+    return render(
+        request,
+        "curador/artigo_detalhe.html",
+        {
+            "nav_active": "artigos",
+            "artigo": _namespace(artigo),
+            "vinculos": [_namespace(v) for v in (artigo.get("vinculos") or [])],
+            "total_vinculos": artigo.get("total_vinculos") or 0,
+            "excluir_url": excluir_url,
+        },
+    )
+
+
+@curador_or_admin_required
+@require_POST
+def excluir_artigo_view(request, artigo_id: str):
+    try:
+        excluir_artigo_admin(artigo_id)
+        messages.success(request, "Artigo excluído com sucesso.")
+    except ApiError as exc:
+        messages.error(request, f"Não foi possível excluir o artigo: {exc}")
+    return redirect("artigos-lista")
