@@ -135,6 +135,14 @@ def register_to_api(
     return token, user
 
 
+def delete_own_account() -> None:
+    _request("DELETE", "/auth/conta", base_url=API_AUTH_BASE_URL)
+
+
+def logout_from_api() -> None:
+    _request("POST", "/auth/logout", base_url=API_AUTH_BASE_URL)
+
+
 def request_password_reset(email: str) -> str:
     payload = _request(
         "POST",
@@ -214,11 +222,46 @@ def _normalize_relations(site: dict[str, Any]) -> dict[str, Any]:
     if isinstance(curador_responsavel, dict) and "data" in curador_responsavel and isinstance(curador_responsavel["data"], dict):
         curador_responsavel = curador_responsavel["data"]
 
+    responsaveis_raw = site.get("responsaveis") or []
+    if isinstance(responsaveis_raw, dict):
+        responsaveis_raw = responsaveis_raw.get("data") or []
+    responsaveis: list[dict[str, Any]] = []
+    for r in (responsaveis_raw if isinstance(responsaveis_raw, list) else []):
+        if not isinstance(r, dict):
+            continue
+        u = r.get("usuario") or {}
+        if isinstance(u, dict) and "data" in u:
+            u = u.get("data") or {}
+        responsaveis.append({
+            "id": r.get("id") or "",
+            "user_id": r.get("user_id") or "",
+            "papel": r.get("papel") or "",
+            "nome": u.get("name") or u.get("nome") or "",
+            "email": u.get("email") or "",
+        })
+
     return {
         "midias": midias if isinstance(midias, list) else [],
         "responsavel": responsavel if isinstance(responsavel, dict) else {},
         "curador_responsavel": curador_responsavel if isinstance(curador_responsavel, dict) else {},
+        "responsaveis": responsaveis,
     }
+
+
+def _normalize_artefatos(site: dict[str, Any]) -> list[str]:
+    # Novo formato: artefato_tipos[].artefato_tipo.nome (pivot tables)
+    pivot = site.get("artefato_tipos")
+    if isinstance(pivot, list) and pivot:
+        return [
+            _normalize_text(entry.get("artefato_tipo", {}).get("nome"))
+            for entry in pivot
+            if isinstance(entry, dict) and isinstance(entry.get("artefato_tipo"), dict)
+        ]
+    # Formato legado: artefatos como lista de strings
+    legacy = site.get("artefatos")
+    if isinstance(legacy, list):
+        return [str(a) for a in legacy if a]
+    return []
 
 
 def normalize_bem_material(site: dict[str, Any]) -> dict[str, Any]:
@@ -244,7 +287,7 @@ def normalize_bem_material(site: dict[str, Any]) -> dict[str, Any]:
         "natureza": natureza,
         "tipo": tipo,
         "meios_acesso": _normalize_text(site.get("meios_acesso")),
-        "artefatos": list(site.get("artefatos") or []),
+        "artefatos": _normalize_artefatos(site),
         "publicado": published,
         "published": published,
         "published_label": "Publicado" if published else "Nao publicado",
@@ -265,6 +308,7 @@ def normalize_bem_material(site: dict[str, Any]) -> dict[str, Any]:
         "midias": relations["midias"],
         "responsavel": relations["responsavel"],
         "curador_responsavel": relations["curador_responsavel"],
+        "responsaveis": relations["responsaveis"],
     }
 
 
@@ -444,11 +488,25 @@ def fetch_all_curadorias(*, status: str | None = None) -> tuple[dict[str, Any], 
 
 
 def fetch_curadoria(curadoria_id: str) -> dict[str, Any]:
-    for status in ("pendente", "aprovado", "rejeitado"):
-        for item in fetch_all_curadorias(status=status):
-            if item.get("id") == curadoria_id:
-                return item
-    raise ApiError("Curadoria não encontrada", 404)
+    data = _request("GET", f"/admin/curadorias/{curadoria_id}")
+    if isinstance(data, dict) and "data" in data and isinstance(data["data"], dict):
+        data = data["data"]
+    if not isinstance(data, dict):
+        raise ApiError("Curadoria não encontrada", 404)
+    return data
+
+
+def fetch_curadorias_por_bem(bem_id: str) -> list[dict[str, Any]]:
+    page = 1
+    results: list[dict[str, Any]] = []
+    while True:
+        payload = _request("GET", f"/admin/bens-materiais/{bem_id}/curadorias", params={"page": page})
+        items, meta = _unwrap_paginated(payload)
+        results.extend(_normalize_curadoria(item) for item in items if isinstance(item, dict))
+        if page >= int(meta["pages"] or 1):
+            break
+        page += 1
+    return results
 
 
 def update_curadoria_avaliacao(curadoria_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -511,10 +569,53 @@ def toggle_publicado_bem_material(bem_id: str, publicado: bool) -> dict[str, Any
     return normalize_bem_material(data)
 
 
+def _normalize_user(entry: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": _normalize_text(entry.get("id")),
+        "nome": _normalize_text(entry.get("name") or entry.get("nome")),
+        "email": _normalize_text(entry.get("email")),
+        "perfil": _normalize_text(entry.get("perfil")),
+        "classificacao": _normalize_text(entry.get("classificacao")),
+        "ativo": bool(entry.get("ativo", True)),
+        "criado_em": _normalize_datetime(entry.get("created_at")),
+    }
+
+
+def list_users(
+    *, q: str | None = None, perfil: str | None = None, page: int = 1
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    params: dict[str, Any] = {"page": page}
+    if q:
+        params["q"] = q
+    if perfil:
+        params["perfil"] = perfil
+    payload = _request("GET", "/admin/usuarios", params=params)
+    items, meta = _unwrap_paginated(payload)
+    return [_normalize_user(item) for item in items if isinstance(item, dict)], meta
+
+
+def update_user_perfil(user_id: str, perfil: str) -> dict[str, Any]:
+    response = _request("PATCH", f"/admin/usuarios/{user_id}/perfil", json_body={"perfil": perfil})
+    data = response.get("data") if isinstance(response, dict) and isinstance(response.get("data"), dict) else response
+    return data if isinstance(data, dict) else {}
+
+
 def fetch_curadores() -> list[dict[str, Any]]:
     payload = _request("GET", "/admin/usuarios/curadores")
     data = payload.get("data") if isinstance(payload, dict) else []
     return data if isinstance(data, list) else []
+
+
+def add_responsavel_bem(bem_id: str, user_id: str, papel: str) -> None:
+    _request(
+        "POST",
+        f"/admin/bens-materiais/{bem_id}/responsaveis",
+        json_body={"user_id": user_id, "papel": papel},
+    )
+
+
+def remove_responsavel_bem(bem_id: str, responsavel_id: str) -> None:
+    _request("DELETE", f"/admin/bens-materiais/{bem_id}/responsaveis/{responsavel_id}")
 
 
 def atualizar_curador_responsavel(bem_id: str, curador_responsavel_id: str | None) -> dict[str, Any]:

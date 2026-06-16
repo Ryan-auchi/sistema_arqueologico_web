@@ -414,57 +414,51 @@
         </div>
     </div>
 
-
-
-{% if audit_entries %}
+{% if curadorias_bem %}
 <div style="max-width: 1280px; margin: 48px auto; padding: 0 32px;">
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; border-top: 1px solid var(--figma-border); padding-top: 32px;">
         <div>
-            <h2 style="font-family: 'Liberation Serif'; font-size: 30px; color: var(--figma-brown-dark); margin:0;">Histórico de Auditoria</h2>
-            <p class="info-label" style="font-weight:400; text-transform: none; margin-top:8px;">Últimas alterações e operações realizadas neste registro.</p>
+            <h2 style="font-family:'Newsreader'; font-size:24px; font-weight:600; color:var(--figma-brown-dark); margin:0 0 4px;">Histórico de Curadorias</h2>
+            <p class="info-label" style="margin:0;">Submissões de coletas e artigos recebidas para este sítio.</p>
         </div>
-        <a href="{% url 'audit-logs' %}" style="background: var(--figma-brown-dark); color: white; padding: 8px 24px; text-decoration: none; font-weight: 700; font-size: 14px; border-radius: 2px;">VER TUDO</a>
+        <a href="{% url 'curadoria-fila' %}" style="font-size:12px; font-weight:700; color:var(--figma-brown-dark); text-decoration:none; border-bottom:1px solid var(--figma-brown-dark);">VER FILA</a>
     </div>
-
-    <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 24px;">
+    <table style="width:100%; border-collapse:separate; border-spacing:0 6px;">
         <thead>
             <tr>
-                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Usuário</th>
-                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Operação</th>
-                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Valor Anterior</th>
-                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Novo Valor</th>
-                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Data</th>
-                <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--figma-text-muted); padding: 8px 16px;">Ação</th>
+                <th style="text-align:left; font-size:11px; font-weight:700; color:var(--figma-text-muted); padding:0 16px 8px; text-transform:uppercase; letter-spacing:.05em;">Tipo</th>
+                <th style="text-align:left; font-size:11px; font-weight:700; color:var(--figma-text-muted); padding:0 16px 8px; text-transform:uppercase; letter-spacing:.05em;">Status</th>
+                <th style="text-align:left; font-size:11px; font-weight:700; color:var(--figma-text-muted); padding:0 16px 8px; text-transform:uppercase; letter-spacing:.05em;">Enviado por</th>
+                <th style="text-align:left; font-size:11px; font-weight:700; color:var(--figma-text-muted); padding:0 16px 8px; text-transform:uppercase; letter-spacing:.05em;">Avaliado por</th>
+                <th style="text-align:left; font-size:11px; font-weight:700; color:var(--figma-text-muted); padding:0 16px 8px; text-transform:uppercase; letter-spacing:.05em;">Data</th>
+                <th style="text-align:left; font-size:11px; font-weight:700; color:var(--figma-text-muted); padding:0 16px 8px;"></th>
             </tr>
         </thead>
         <tbody>
-            {% for entry in audit_entries %}
-                <tr style="background: #FFFFFF; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); border-radius: 4px; transition: background-color 0.2s ease;">
-                    <td style="font-weight:600; border-left: 2px solid #16A34A; border-radius: 4px 0 0 4px; padding: 16px;">{{ entry.usuario.nome|default:"Sistema" }}</td>
-                    <td style="padding: 16px;">
-                        <span style="{% if entry.operacao == 'exclusao' %}color:#ba1a1a; font-weight:700;{% else %}color: var(--figma-text-muted);{% endif %}">
-                            {{ entry.operacao|default:"-"|upper }}
-                        </span>
-                    </td>
-                    <td style="color: var(--figma-text-muted); padding: 16px; font-size: 12px;">
-                        {% if entry.valor_anterior %}
-                            <span style="font-family: 'Liberation Mono';">{{ entry.valor_anterior|truncatewords:5 }}</span>
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-                    <td style="color: var(--figma-text-muted); padding: 16px; font-size: 12px;">
-                        {% if entry.valor_novo %}
-                            <span style="font-family: 'Liberation Mono';">{{ entry.valor_novo|truncatewords:5 }}</span>
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-                    <td style="font-family:'Liberation Mono'; padding: 16px;">{{ entry.data_hora|date:"d M Y" }}</td>
-                    <td style="padding: 16px;">
-                        <a href="{% url 'audit-detail' entry.id %}" style="background: transparent; color: var(--figma-brown-dark); text-decoration: none; font-weight: 700; font-size: 12px; border-bottom: 1px solid var(--figma-brown-dark); cursor: pointer;">Ver detalhes</a>
-                    </td>
-                </tr>
+            {% for c in curadorias_bem %}
+            <tr style="background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.05); border-radius:4px;">
+                <td style="padding:14px 16px; font-size:13px;">
+                    {% if c.entidade_tipo == "submissao_artigo" %}Artigo científico{% else %}Coleta de campo{% endif %}
+                </td>
+                <td style="padding:14px 16px;">
+                    <span style="font-size:11px; font-weight:700; letter-spacing:.05em;
+                        {% if c.status == 'aprovado' %}color:#16a34a;
+                        {% elif c.status == 'rejeitado' %}color:#ba1a1a;
+                        {% else %}color:#92400e;{% endif %}">
+                        {{ c.status|upper }}
+                    </span>
+                </td>
+                <td style="padding:14px 16px; font-size:13px; color:var(--figma-text-muted);">{{ c.usuario.nome|default:"—" }}</td>
+                <td style="padding:14px 16px; font-size:13px; color:var(--figma-text-muted);">{{ c.curador.nome|default:"—" }}</td>
+                <td style="padding:14px 16px; font-size:13px; font-family:'Liberation Mono';">{{ c.criado_em|date:"d M Y" }}</td>
+                <td style="padding:14px 16px;">
+                    {% if c.status == "pendente" %}
+                        <a href="{% url 'curadoria-revisao' c.id %}" style="font-size:12px; font-weight:700; color:var(--figma-brown-dark); text-decoration:none; border-bottom:1px solid var(--figma-brown-dark);">Revisar</a>
+                    {% else %}
+                        <a href="{% url 'audit-logs' %}?curadoria_id={{ c.id }}" style="font-size:12px; font-weight:700; color:var(--figma-brown-dark); text-decoration:none; border-bottom:1px solid var(--figma-brown-dark);">Ver resultado</a>
+                    {% endif %}
+                </td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>

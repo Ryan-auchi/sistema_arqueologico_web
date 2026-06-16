@@ -707,14 +707,13 @@ class TestFetchAllCuradorias:
 
     def test_fetch_curadoria_encontra_por_id(self):
         from api_client.client import fetch_curadoria
-        payload = {"data": [{"id": "cur-alvo", "status": "aprovado"}], "total": 1, "current_page": 1, "last_page": 1, "per_page": 20}
+        payload = {"data": {"id": "cur-alvo", "status": "aprovado"}}
         with patch("api_client.client._request", return_value=payload):
             result = fetch_curadoria("cur-alvo")
         assert result["id"] == "cur-alvo"
 
     def test_fetch_curadoria_levanta_erro_quando_nao_encontrada(self):
         from api_client.client import fetch_curadoria
-        payload = {"data": [], "total": 0, "current_page": 1, "last_page": 1, "per_page": 20}
-        with patch("api_client.client._request", return_value=payload):
+        with patch("api_client.client._request", return_value="not-found"):
             with pytest.raises(ApiError):
                 fetch_curadoria("inexistente")

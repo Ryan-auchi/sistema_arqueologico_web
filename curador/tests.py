@@ -950,3 +950,104 @@ class TestExcluirArtigo:
     def test_post_nao_autenticado_redireciona(self, client):
         response = client.post(reverse("excluir-artigo", args=["art-001"]))
         assert response.status_code in (302, 403)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# curadoria_revisao — add/remove responsavel
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+class TestCuradoriaRevisaoResponsaveis:
+    def test_post_add_responsavel_chama_api_e_redireciona(self, client, curador_user):
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_EXISTENTE_FAKE),
+            patch("curador.views.add_responsavel_bem") as mock_add,
+        ):
+            response = client.post(
+                reverse("curadoria-revisao", args=["cur-003"]),
+                {"action": "add_responsavel", "user_id": "user-001", "papel": "pesquisador"},
+            )
+        mock_add.assert_called_once_with("abc-123", "user-001", "pesquisador")
+        assert response.status_code == 302
+        assert "cur-003" in response["Location"]
+
+    def test_post_add_responsavel_api_error_redireciona_com_mensagem(self, client, curador_user):
+        from api_client.client import ApiError
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_EXISTENTE_FAKE),
+            patch("curador.views.add_responsavel_bem", side_effect=ApiError("falha")),
+        ):
+            response = client.post(
+                reverse("curadoria-revisao", args=["cur-003"]),
+                {"action": "add_responsavel", "user_id": "user-001", "papel": "pesquisador"},
+            )
+        assert response.status_code == 302
+        assert "cur-003" in response["Location"]
+
+    def test_post_remove_responsavel_chama_api_e_redireciona(self, client, curador_user):
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_EXISTENTE_FAKE),
+            patch("curador.views.remove_responsavel_bem") as mock_remove,
+        ):
+            response = client.post(
+                reverse("curadoria-revisao", args=["cur-003"]),
+                {"action": "remove_responsavel", "responsavel_id": "resp-001"},
+            )
+        mock_remove.assert_called_once_with("abc-123", "resp-001")
+        assert response.status_code == 302
+        assert "cur-003" in response["Location"]
+
+    def test_post_remove_responsavel_api_error_redireciona_com_mensagem(self, client, curador_user):
+        from api_client.client import ApiError
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_EXISTENTE_FAKE),
+            patch("curador.views.remove_responsavel_bem", side_effect=ApiError("falha")),
+        ):
+            response = client.post(
+                reverse("curadoria-revisao", args=["cur-003"]),
+                {"action": "remove_responsavel", "responsavel_id": "resp-001"},
+            )
+        assert response.status_code == 302
+        assert "cur-003" in response["Location"]
+
+    def test_post_add_responsavel_sem_bem_id_nao_chama_api(self, client, curador_user):
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.add_responsavel_bem") as mock_add,
+        ):
+            response = client.post(
+                reverse("curadoria-revisao", args=["cur-001"]),
+                {"action": "add_responsavel", "user_id": "user-001", "papel": "pesquisador"},
+            )
+        mock_add.assert_not_called()
+        assert response.status_code == 302
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# audit_logs — filtro por curadoria_id
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+class TestAuditLogsCuradoriaId:
+    def test_get_curadoria_id_filtra_por_curadoria(self, client, curador_user):
+        client.force_login(curador_user)
+        with patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)) as mock_list:
+            client.get(reverse("audit-logs") + "?curadoria_id=cur-001")
+        call_kwargs = mock_list.call_args[1]
+        assert call_kwargs.get("entidade_tipo") == "App\\Models\\Curadoria"
+        assert call_kwargs.get("entidade_id") == "cur-001"
+
+    def test_get_curadoria_id_tem_prioridade_sobre_filtro(self, client, curador_user):
+        client.force_login(curador_user)
+        with patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)) as mock_list:
+            client.get(reverse("audit-logs") + "?curadoria_id=cur-001&filtro=artigos")
+        call_kwargs = mock_list.call_args[1]
+        assert call_kwargs.get("entidade_tipo") == "App\\Models\\Curadoria"
+        assert call_kwargs.get("entidade_id") == "cur-001"

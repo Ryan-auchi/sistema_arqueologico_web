@@ -178,9 +178,30 @@ function bindFlashMessages() {
 	});
 }
 
+function bindExcluirContaModal() {
+	const dialog = document.getElementById('modal-excluir-conta');
+	if (!dialog) { return; }
+
+	const input = document.getElementById('excluir-confirm');
+	const btn = document.getElementById('btn-excluir-conta');
+
+	input.addEventListener('input', function () {
+		btn.disabled = this.value !== 'EXCLUIR';
+	});
+
+	const openBtn = document.querySelector('[data-modal-open="modal-excluir-conta"]');
+	if (openBtn) {
+		openBtn.addEventListener('click', function () {
+			input.value = '';
+			btn.disabled = true;
+		});
+	}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 	bindFlashMessages();
 	bindAuthMenu();
 	bindAuthModals();
 	bindMapPage();
+	bindExcluirContaModal();
 });

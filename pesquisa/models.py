@@ -68,6 +68,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         PROFESSOR = "professor", "Professor"
         ARQUEOLOGO = "arqueologo", "Arqueólogo"
 
+    api_id = models.CharField(max_length=36, blank=True, default="")
     nome = models.CharField(max_length=150)
     email = models.EmailField(unique=True)
     perfil = models.CharField(

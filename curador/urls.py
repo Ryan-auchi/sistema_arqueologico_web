@@ -3,11 +3,13 @@ from django.urls import path
 from .views import (
     artigo_detalhe,
     artigos_lista,
+    atualizar_perfil_usuario,
     audit_detail,
     audit_logs,
     curadoria_fila,
     curadoria_revisao,
     excluir_artigo_view,
+    lista_usuarios,
     restaurar_auditoria_view,
 )
 
@@ -20,4 +22,6 @@ urlpatterns = [
     path("artigos/", artigos_lista, name="artigos-lista"),
     path("artigos/<str:artigo_id>/", artigo_detalhe, name="artigo-detalhe"),
     path("artigos/<str:artigo_id>/excluir/", excluir_artigo_view, name="excluir-artigo"),
+    path("usuarios/", lista_usuarios, name="usuarios-lista"),
+    path("usuarios/<str:user_id>/perfil/", atualizar_perfil_usuario, name="usuario-atualizar-perfil"),
 ]
