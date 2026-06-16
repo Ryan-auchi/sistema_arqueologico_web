@@ -1,11 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from api_client.client import (
     ApiError,
     clear_api_auth_token,
+    confirm_password_reset,
     delete_own_account,
     login_to_api,
     logout_from_api,
@@ -151,6 +152,30 @@ def auth_password_reset(request):
 
     messages.info(request, msg or "Se este e-mail estiver cadastrado, você receberá as instruções em breve.")
     return redirect(_safe_redirect_target(request))
+
+
+def auth_password_reset_confirm(request):
+    token = (request.GET.get("token") or request.POST.get("token") or "").strip()
+    email = (request.GET.get("email") or request.POST.get("email") or "").strip()
+
+    if request.method == "POST":
+        password = request.POST.get("password") or ""
+        password_confirmation = request.POST.get("password_confirmation") or ""
+        if password != password_confirmation:
+            messages.error(request, "As senhas não coincidem.")
+            return redirect("home")
+        try:
+            confirm_password_reset(email, token, password, password_confirmation)
+        except ApiError as exc:
+            if getattr(exc, "status_code", None) == 422:
+                messages.error(request, "Código inválido ou expirado. Solicite um novo link de recuperação.")
+            else:
+                messages.error(request, exc.message or "Não foi possível redefinir a senha.")
+            return redirect("home")
+        messages.success(request, "Senha redefinida com sucesso. Faça login com a nova senha.")
+        return redirect("home")
+
+    return render(request, "core/password_reset_confirm.html", {"token": token, "email": email})
 
 
 def excluir_conta(request):
