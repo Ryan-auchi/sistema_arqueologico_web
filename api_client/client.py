@@ -153,6 +153,20 @@ def request_password_reset(email: str) -> str:
     return _normalize_text(payload.get("message"))
 
 
+def confirm_password_reset(email: str, token: str, password: str, password_confirmation: str) -> str:
+    payload = _request(
+        "POST",
+        "/auth/password-reset/confirm",
+        json_body={
+            "email": email,
+            "token": token,
+            "password": password,
+            "password_confirmation": password_confirmation,
+        },
+        base_url=API_AUTH_BASE_URL,
+    )
+    return _normalize_text(payload.get("message"))
+
 
 def _unwrap_paginated(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if isinstance(payload.get("data"), list):
