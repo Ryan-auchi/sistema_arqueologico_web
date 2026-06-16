@@ -87,7 +87,8 @@ class TestAuthLogout:
         client.force_login(coletor_user)
         client.session["api_auth_token"] = "tok"
         client.session.save()
-        response = client.post(reverse("auth-logout"))
+        with patch("core.views.logout_from_api"):
+            response = client.post(reverse("auth-logout"))
         assert response.status_code == 302
         assert "api_auth_token" not in client.session
 

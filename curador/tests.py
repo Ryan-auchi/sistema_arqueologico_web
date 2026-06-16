@@ -367,6 +367,7 @@ class TestCuradoriaRevisaoColeta:
         """Mocks padrão para GET de revisão de coleta."""
         return [
             patch("curador.views.fetch_curadoria", return_value=curadoria or CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.fetch_curadores", return_value=[]),
             patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)),
             patch("curador.views.fetch_all_bens_materiais", return_value=bens),
         ]
@@ -375,6 +376,7 @@ class TestCuradoriaRevisaoColeta:
         client.force_login(curador_user)
         with (
             patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.fetch_curadores", return_value=[]),
             patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)),
             patch("curador.views.fetch_all_bens_materiais", return_value=()),
         ):
@@ -387,6 +389,7 @@ class TestCuradoriaRevisaoColeta:
         site_prox = {**SITE_FAKE, "id": "s-prox", "latitude": -8.50, "longitude": -42.62}
         with (
             patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.fetch_curadores", return_value=[]),
             patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)),
             patch("curador.views.fetch_all_bens_materiais", return_value=(site_prox,)),
         ):
@@ -482,6 +485,7 @@ class TestCuradoriaRevisaoColeta:
         client.force_login(curador_user)
         with (
             patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.fetch_curadores", return_value=[]),
             patch("curador.views.list_auditorias", side_effect=ApiError("offline")),
             patch("curador.views.fetch_all_bens_materiais", return_value=()),
         ):
