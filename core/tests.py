@@ -3,7 +3,6 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 
-from conftest import SITE_FAKE
 from pesquisa.models import Usuario
 
 
