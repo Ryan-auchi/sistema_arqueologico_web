@@ -62,15 +62,18 @@ A aba **Colaboradores** consome `GET /mobile/bens-materiais/{id}/colaboradores`.
 - **Excluir bem material** — botão com confirmação JS que aciona `DELETE /admin/bens-materiais/{id}`. O registro é removido por soft delete (`deleted_at`) e a operação é registrada automaticamente como `exclusao` no log de auditoria.
 
 ### Autenticação
-O header expõe um popover de login. Além do login padrão, há suporte a:
+O header expõe um popover de login/perfil. Além do login padrão, há suporte a:
 
-- **Criação de conta** — modal centralizado com campos nome, e-mail, senha e confirmação; chama `POST /api/v1/auth/register` e faz login automático
-- **Recuperação de senha** — modal que chama `POST /api/v1/auth/password-reset`; não revela se o e-mail existe ou não
+- **Criação de conta** — modal com campos nome, e-mail, senha e confirmação; chama `POST /api/auth/register` e faz login automático
+- **Recuperação de senha** — modal que chama `POST /api/auth/password-reset`; não revela se o e-mail existe ou não
+- **Excluir minha conta** — disponível no popover de perfil quando autenticado; abre um dialog de confirmação que requer digitar `EXCLUIR`; chama `DELETE /api/auth/conta`, faz logout da sessão e exibe confirmação (LGPD art. 18)
 
 As notificações flash possuem auto-dismiss em 4 segundos e botão ✕ para fechar manualmente.
 
 ### Curadoria
 Fluxo de revisão técnica para curadores e administradores. A fila é **polimórfica**: aceita tanto coletas de campo quanto submissões de artigos científicos enviadas pelo aplicativo móvel.
+
+A fila suporta **ordenação** clicando no cabeçalho das colunas "Nome popular" e "Data de entrada" (▲ crescente / ▼ decrescente / ⇅ padrão). A ordenação e o filtro de busca são preservados nos links de paginação.
 
 **Filtros da fila** — painel expansível ativado pelo botão "Filtros" na action bar:
 
@@ -109,6 +112,8 @@ Histórico completo de operações. A listagem (`audit_logs`) exibe labels espec
 | Criação de vínculo artigo | VÍNCULO-ARTIGO |
 | Remoção de vínculo artigo | REMOÇÃO-ARTIGO |
 | Rejeição de curadoria | REJEIÇÃO |
+| Alteração de perfil de usuário | ALTERAÇÃO |
+| Anonimização de conta (LGPD) | ANONIMIZAÇÃO |
 
 **Filtros de auditoria** — painel expansível com os seguintes campos:
 
@@ -128,6 +133,16 @@ Histórico completo de operações. A listagem (`audit_logs`) exibe labels espec
 **Listagem de artigos científicos** (`artigos_lista`):
 
 Acessível via `/curador/artigos-cientificos/`. Exibe todos os artigos cadastrados com título, autores, periódico, ano e contagem de sítios vinculados. A tela de detalhe de cada artigo lista os bens materiais vinculados com tipo de menção e trecho relevante. Curadores e administradores podem excluir artigos — a exclusão remove todos os vínculos e registra auditoria de Exclusão.
+
+**Gestão de usuários** (`usuarios_lista`):
+
+Acessível via `/curador/usuarios/`. Exclusiva para administradores. Exibe todos os usuários do sistema com nome, e-mail, perfil e status. O perfil de um usuário pode ser alterado individualmente — a mudança é registrada em auditoria com id, nome e e-mail do usuário afetado.
+
+### Conformidade com a LGPD
+
+O painel implementa o direito de exclusão previsto na LGPD (art. 18 VI) diretamente na interface do usuário. O titular pode excluir a própria conta a qualquer momento pelo menu de perfil, sem necessidade de solicitar ao administrador. Após a confirmação, os dados pessoais são anonimizados na API e a sessão web é encerrada imediatamente.
+
+Contribuições científicas (coletas, curadorias, artigos) são preservadas com identificação substituída por "Usuário excluído", conforme LGPD art. 16 II. Detalhes técnicos e legais estão documentados em [`LGPD.md`](../sistema_arqueologico_api/LGPD.md) no repositório da API.
 
 ---
 

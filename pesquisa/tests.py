@@ -6,52 +6,6 @@ from django.urls import reverse
 from conftest import SITE_FAKE
 
 # ─────────────────────────────────────────────────────────────────────────────
-# catalog.py — funções puras (sem DB nem API)
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-class TestCatalogFilteredSites:
-    def test_sem_filtros_retorna_todos(self):
-        from pesquisa.catalog import SITES, filtered_sites
-        result = filtered_sites({})
-        assert len(result) == len(SITES)
-
-    def test_filtro_conservation(self):
-        from pesquisa.catalog import filtered_sites
-        result = filtered_sites({"conservation": "excellent"})
-        assert all(s["conservation"] == "excellent" for s in result)
-
-    def test_filtro_state(self):
-        from pesquisa.catalog import filtered_sites
-        result = filtered_sites({"state": "Piauí"})
-        assert all(s["state"] == "Piauí" for s in result)
-        assert len(result) >= 1
-
-    def test_filtro_query_nome(self):
-        from pesquisa.catalog import filtered_sites
-        result = filtered_sites({"q": "capivara"})
-        assert len(result) >= 1
-        assert any("Capivara" in s["name"] or "capivara" in s["name"].lower() for s in result)
-
-    def test_filtro_sem_resultado(self):
-        from pesquisa.catalog import filtered_sites
-        result = filtered_sites({"conservation": "excellent", "state": "Amazonas"})
-        assert result == []
-
-
-class TestCatalogSerializeSite:
-    def test_serialize_retorna_campos_esperados(self):
-        from pesquisa.catalog import SITES, serialize_site
-        result = serialize_site(SITES[0])
-        assert "name" in result
-        assert "latitude" in result
-        assert "longitude" in result
-        assert "badge" in result
-        # campos que NÃO devem aparecer na serialização simples
-        assert "gallery" not in result
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # pesquisa/models.py — UsuarioManager
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -155,19 +109,9 @@ class TestApiSites:
 
 @pytest.mark.django_db
 class TestSiteDetail:
-    def _mocks_basicos(self):
-        """Retorna patch combinado para os mocks mínimos do site_detail."""
-        return [
-            patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
-            patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
-            patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
-        ]
-
     def test_get_site_existente_retorna_200(self, client):
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
         ):
@@ -185,7 +129,6 @@ class TestSiteDetail:
         colaborador_fake = {"id": "u1", "nome": "Colaborador", "email": "col@test.com", "classificacao": "estudante", "origem": "coleta", "total_contribuicoes": 1}
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[ARTIGO_BEM_FAKE]),
             patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[colaborador_fake]),
         ):
@@ -198,10 +141,10 @@ class TestSiteDetail:
         client.force_login(curador_user)
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_curadores", return_value=[]),
+            patch("pesquisa.views.fetch_curadorias_por_bem", return_value=[]),
         ):
             response = client.get(reverse("pesquisa-detalhe", args=["abc-123"]))
         assert response.context["is_curador_or_admin"] is True
@@ -210,7 +153,6 @@ class TestSiteDetail:
         client.force_login(curador_user)
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_curadores", return_value=[]),
@@ -228,7 +170,6 @@ class TestSiteDetail:
         client.force_login(curador_user)
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_curadores", return_value=[]),
@@ -246,7 +187,6 @@ class TestSiteDetail:
         client.force_login(curador_user)
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_curadores", return_value=[]),
@@ -264,7 +204,6 @@ class TestSiteDetail:
         client.force_login(coletor_user)
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
             patch("pesquisa.views.submeter_artigo", return_value={}) as mock_submeter,
@@ -378,10 +317,6 @@ def _P_BEM():
     return patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE)
 
 
-def _P_AUD():
-    return patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[])
-
-
 def _P_ART():
     return patch("pesquisa.views.fetch_artigos_por_bem", return_value=[])
 
@@ -394,6 +329,10 @@ def _P_CUR():
     return patch("pesquisa.views.fetch_curadores", return_value=[])
 
 
+def _P_CURS():
+    return patch("pesquisa.views.fetch_curadorias_por_bem", return_value=[])
+
+
 @pytest.mark.django_db
 class TestSiteDetailErrorPaths:
     """Caminhos de erro nas POST actions do site_detail."""
@@ -402,7 +341,7 @@ class TestSiteDetailErrorPaths:
         from api_client.client import ApiError
         client.force_login(curador_user)
         with (
-            _P_BEM(), _P_AUD(), _P_ART(), _P_COL(), _P_CUR(),
+            _P_BEM(), _P_ART(), _P_COL(), _P_CUR(), _P_CURS(),
             patch("pesquisa.views.toggle_publicado_bem_material", side_effect=ApiError("erro", 500)),
             patch("pesquisa.views.invalidate_bens_cache"),
         ):
@@ -415,7 +354,7 @@ class TestSiteDetailErrorPaths:
     def test_submeter_artigo_com_artigo_id_passa_id_no_payload(self, client, coletor_user):
         client.force_login(coletor_user)
         with (
-            _P_BEM(), _P_AUD(), _P_ART(), _P_COL(),
+            _P_BEM(), _P_ART(), _P_COL(),
             patch("pesquisa.views.submeter_artigo", return_value={}) as mock_sub,
         ):
             client.post(
@@ -436,7 +375,7 @@ class TestSiteDetailErrorPaths:
         from api_client.client import ApiError
         client.force_login(coletor_user)
         with (
-            _P_BEM(), _P_AUD(), _P_ART(), _P_COL(),
+            _P_BEM(), _P_ART(), _P_COL(),
             patch("pesquisa.views.submeter_artigo", side_effect=ApiError("falha")),
         ):
             response = client.post(
@@ -449,7 +388,7 @@ class TestSiteDetailErrorPaths:
         from api_client.client import ApiError
         client.force_login(curador_user)
         with (
-            _P_BEM(), _P_AUD(), _P_ART(), _P_COL(), _P_CUR(),
+            _P_BEM(), _P_ART(), _P_COL(), _P_CUR(), _P_CURS(),
             patch("pesquisa.views.remover_vinculo_artigo", side_effect=ApiError("falha")),
         ):
             response = client.post(
@@ -461,7 +400,7 @@ class TestSiteDetailErrorPaths:
     def test_atualizar_curador_responsavel_sucesso(self, client, curador_user):
         client.force_login(curador_user)
         with (
-            _P_BEM(), _P_AUD(), _P_ART(), _P_COL(), _P_CUR(),
+            _P_BEM(), _P_ART(), _P_COL(), _P_CUR(), _P_CURS(),
             patch("pesquisa.views.atualizar_curador_responsavel", return_value=SITE_FAKE) as mock_atualizar,
             patch("pesquisa.views.invalidate_bens_cache"),
         ):
@@ -476,7 +415,7 @@ class TestSiteDetailErrorPaths:
         from api_client.client import ApiError
         client.force_login(curador_user)
         with (
-            _P_BEM(), _P_AUD(), _P_ART(), _P_COL(), _P_CUR(),
+            _P_BEM(), _P_ART(), _P_COL(), _P_CUR(), _P_CURS(),
             patch("pesquisa.views.atualizar_curador_responsavel", side_effect=ApiError("falha")),
         ):
             response = client.post(
@@ -489,7 +428,7 @@ class TestSiteDetailErrorPaths:
         from api_client.client import ApiError
         client.force_login(curador_user)
         with (
-            _P_BEM(), _P_AUD(), _P_ART(), _P_COL(), _P_CUR(),
+            _P_BEM(), _P_ART(), _P_COL(), _P_CUR(), _P_CURS(),
             patch("pesquisa.views.excluir_bem_material", side_effect=ApiError("falha")),
             patch("pesquisa.views.invalidate_bens_cache"),
         ):
@@ -499,23 +438,10 @@ class TestSiteDetailErrorPaths:
             )
         assert response.status_code == 302
 
-    def test_fetch_auditorias_api_error_renderiza_sem_entradas(self, client):
-        from api_client.client import ApiError
-        with (
-            patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", side_effect=ApiError("offline")),
-            patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
-            patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
-        ):
-            response = client.get(reverse("pesquisa-detalhe", args=["abc-123"]))
-        assert response.status_code == 200
-        assert response.context["audit_entries"] == []
-
     def test_fetch_artigos_api_error_renderiza_sem_artigos(self, client):
         from api_client.client import ApiError
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", side_effect=ApiError("offline")),
             patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
         ):
@@ -527,7 +453,6 @@ class TestSiteDetailErrorPaths:
         from api_client.client import ApiError
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_colaboradores_por_bem", side_effect=ApiError("offline", 503)),
         ):
@@ -537,7 +462,7 @@ class TestSiteDetailErrorPaths:
 
     def test_atualizar_curador_responsavel_coletor_retorna_404(self, client, coletor_user):
         client.force_login(coletor_user)
-        with (_P_BEM(), _P_AUD(), _P_ART(), _P_COL()):
+        with (_P_BEM(), _P_ART(), _P_COL()):
             response = client.post(
                 reverse("pesquisa-detalhe", args=["abc-123"]),
                 {"action": "atualizar_curador_responsavel", "curador_responsavel_id": "x"},
@@ -546,7 +471,7 @@ class TestSiteDetailErrorPaths:
 
     def test_excluir_bem_coletor_retorna_404(self, client, coletor_user):
         client.force_login(coletor_user)
-        with (_P_BEM(), _P_AUD(), _P_ART(), _P_COL()):
+        with (_P_BEM(), _P_ART(), _P_COL()):
             response = client.post(
                 reverse("pesquisa-detalhe", args=["abc-123"]),
                 {"action": "excluir_bem"},
@@ -558,13 +483,53 @@ class TestSiteDetailErrorPaths:
         client.force_login(curador_user)
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
-            patch("pesquisa.views.fetch_auditorias_for_bem", return_value=[]),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
             patch("pesquisa.views.fetch_curadores", side_effect=ApiError("offline")),
+            patch("pesquisa.views.fetch_curadorias_por_bem", return_value=[]),
         ):
             response = client.get(reverse("pesquisa-detalhe", args=["abc-123"]))
         assert response.status_code == 200
+
+    def test_get_curador_recebe_curadorias_bem_no_contexto(self, client, curador_user):
+        client.force_login(curador_user)
+        curadoria_fake = {"id": "cur-001", "status": "aprovado", "entidade_tipo": "coleta"}
+        with (
+            patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
+            patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
+            patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
+            patch("pesquisa.views.fetch_curadores", return_value=[]),
+            patch("pesquisa.views.fetch_curadorias_por_bem", return_value=[curadoria_fake]),
+        ):
+            response = client.get(reverse("pesquisa-detalhe", args=["abc-123"]))
+        assert response.status_code == 200
+        assert len(response.context["curadorias_bem"]) == 1
+
+    def test_get_fetch_curadorias_api_error_nao_quebra(self, client, curador_user):
+        from api_client.client import ApiError
+        client.force_login(curador_user)
+        with (
+            patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
+            patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
+            patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
+            patch("pesquisa.views.fetch_curadores", return_value=[]),
+            patch("pesquisa.views.fetch_curadorias_por_bem", side_effect=ApiError("offline")),
+        ):
+            response = client.get(reverse("pesquisa-detalhe", args=["abc-123"]))
+        assert response.status_code == 200
+        assert response.context["curadorias_bem"] == []
+
+    def test_get_anonimo_nao_recebe_curadorias_bem(self, client):
+        with (
+            patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
+            patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
+            patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
+            patch("pesquisa.views.fetch_curadorias_por_bem") as mock_curs,
+        ):
+            response = client.get(reverse("pesquisa-detalhe", args=["abc-123"]))
+        assert response.status_code == 200
+        mock_curs.assert_not_called()
+        assert response.context["curadorias_bem"] == []
 
 
 @pytest.mark.django_db

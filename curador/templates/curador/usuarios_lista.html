@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Usuários | Coletum{% endblock %}
+
+{% block extra_head %}
+<style>
+    :root {
+        --figma-brown-dark: #312113;
+        --figma-brown-light: #BA9F8B;
+        --figma-text-muted: #615E5C;
+        --figma-border: rgba(210, 196, 187, 0.2);
+    }
+
+    .shell { padding: 0; }
+
+    .main-content {
+        width: 100%;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 32px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .eyebrow {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #312113;
+        margin-bottom: 8px;
+    }
+
+    .main-title {
+        font-family: 'Newsreader', serif;
+        font-size: 30px;
+        font-weight: 400;
+        letter-spacing: -1.2px;
+        color: #312113;
+        margin-bottom: 4px;
+    }
+
+    .subtitle { font-size: 14px; color: #4e453e; }
+
+    .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .search-input {
+        flex: 1;
+        min-width: 220px;
+        height: 38px;
+        padding: 0 14px;
+        border: 1px solid rgba(210, 196, 187, 0.5);
+        border-radius: 4px;
+        font-size: 14px;
+        background: #fff;
+        color: #312113;
+        outline: none;
+    }
+
+    .search-input:focus { border-color: #BA9F8B; }
+
+    .filter-select {
+        height: 38px;
+        padding: 0 12px;
+        border: 1px solid rgba(210, 196, 187, 0.5);
+        border-radius: 4px;
+        font-size: 14px;
+        background: #fff;
+        color: #312113;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .btn-search {
+        height: 38px;
+        padding: 0 18px;
+        background: #312113;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .btn-search:hover { background: #493627; }
+
+    .stats-badges {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: rgba(78, 69, 62, 0.6);
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .table-container {
+        background: #fff;
+        border: 1px solid rgba(210, 196, 187, 0.2);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .users-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .users-table thead {
+        background: rgba(243, 244, 245, 0.5);
+        border-bottom: 1px solid rgba(210, 196, 187, 0.1);
+    }
+
+    .users-table th {
+        padding: 14px 20px;
+        text-align: left;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #312113;
+        white-space: nowrap;
+    }
+
+    .users-table tbody tr {
+        border-bottom: 1px solid rgba(237, 238, 239, 0.5);
+        transition: background-color 0.15s ease;
+    }
+
+    .users-table tbody tr:hover { background: rgba(241, 239, 237, 0.55); }
+
+    .users-table td {
+        padding: 14px 20px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+    .user-name-cell { font-weight: 600; color: #312113; }
+
+    .user-id {
+        font-size: 11px;
+        color: #80756d;
+        font-family: 'Liberation Mono', monospace;
+        margin-top: 2px;
+    }
+
+    .muted { color: #80756d; }
+
+    .perfil-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .perfil-admin   { background: rgba(73,54,39,0.12); color: #312113; }
+    .perfil-curador { background: rgba(186,159,139,0.25); color: #5a3e2b; }
+    .perfil-coletor { background: rgba(210,196,187,0.3); color: #615e5c; }
+
+    .perfil-form {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .perfil-select {
+        height: 32px;
+        padding: 0 8px;
+        border: 1px solid rgba(210, 196, 187, 0.5);
+        border-radius: 4px;
+        font-size: 13px;
+        background: #fff;
+        color: #312113;
+        cursor: pointer;
+    }
+
+    .btn-save {
+        height: 32px;
+        padding: 0 14px;
+        background: #312113;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-save:hover { background: #493627; }
+
+    .empty-state {
+        padding: 64px 24px;
+        text-align: center;
+        color: #80756d;
+    }
+
+    .empty-state p:first-child {
+        font-family: 'Newsreader', serif;
+        font-size: 20px;
+        color: #312113;
+        margin-bottom: 8px;
+    }
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-top: 1px solid rgba(210, 196, 187, 0.15);
+        font-size: 13px;
+        color: #80756d;
+    }
+
+    .pagination-links { display: flex; gap: 6px; }
+
+    .page-btn {
+        height: 30px;
+        min-width: 30px;
+        padding: 0 8px;
+        border: 1px solid rgba(210, 196, 187, 0.4);
+        border-radius: 4px;
+        background: #fff;
+        color: #312113;
+        font-size: 13px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .page-btn:hover { background: rgba(241, 239, 237, 0.8); }
+    .page-btn.active { background: #312113; color: #fff; border-color: #312113; }
+    .page-btn[disabled] { opacity: 0.4; pointer-events: none; }
+
+    @media (max-width: 720px) {
+        .main-content { padding: 16px; }
+        .users-table { min-width: 640px; }
+        .toolbar { flex-direction: column; align-items: stretch; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="curadoria-layout">
+    {% include "components/sidebar.html" with active_section="usuarios" %}
+
+    <main class="main-content">
+        <header class="header-section">
+            <p class="eyebrow">Administração</p>
+            <h1 class="main-title">Usuários</h1>
+            <p class="subtitle">Gerencie os perfis de acesso dos usuários cadastrados no sistema.</p>
+        </header>
+
+        <form method="get" action="{% url 'usuarios-lista' %}" class="toolbar">
+            <input
+                class="search-input"
+                type="text"
+                name="q"
+                value="{{ current_filters.q }}"
+                placeholder="Buscar por nome, e-mail ou ID…"
+                autocomplete="off"
+            >
+            <select class="filter-select" name="perfil">
+                <option value="">Todos os perfis</option>
+                {% for p in perfis %}
+                <option value="{{ p }}" {% if current_filters.perfil == p %}selected{% endif %}>
+                    {{ p|capfirst }}
+                </option>
+                {% endfor %}
+            </select>
+            <button class="btn-search" type="submit">Buscar</button>
+            {% if current_filters.q or current_filters.perfil %}
+            <a href="{% url 'usuarios-lista' %}" class="btn-search" style="background:transparent;color:#615e5c;border:1px solid rgba(210,196,187,0.5);">Limpar</a>
+            {% endif %}
+        </form>
+
+        <div style="display:flex; justify-content:flex-end;">
+            <div class="stats-badges">
+                <div class="badge">
+                    <span class="dot" style="background:#312113;"></span>
+                    {{ meta.total }} usuário{{ meta.total|pluralize:"s" }}
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            {% if usuarios %}
+            <div style="overflow-x:auto;">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th style="min-width:220px;">Usuário</th>
+                        <th>E-mail</th>
+                        <th>Classificação</th>
+                        <th>Cadastro</th>
+                        <th style="min-width:200px;">Perfil</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usuario in usuarios %}
+                    <tr>
+                        <td class="user-name-cell">
+                            {{ usuario.nome|default:"—" }}
+                            <div class="user-id">{{ usuario.id }}</div>
+                        </td>
+                        <td class="muted">{{ usuario.email|default:"—" }}</td>
+                        <td class="muted">{{ usuario.classificacao|default:"—"|capfirst }}</td>
+                        <td class="muted" style="white-space:nowrap;">{{ usuario.criado_em|date:"d/m/Y"|default:"—" }}</td>
+                        <td>
+                            {% if usuario.perfil == "admin" %}
+                                <span class="perfil-badge perfil-admin">Admin</span>
+                            {% else %}
+                            <form class="perfil-form" method="post" action="{% url 'usuario-atualizar-perfil' usuario.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <select class="perfil-select" name="perfil">
+                                    {% for p in perfis %}
+                                    <option value="{{ p }}" {% if usuario.perfil == p %}selected{% endif %}>{{ p|capfirst }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn-save" type="submit">Salvar</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+
+            {% if meta.pages > 1 %}
+            <div class="pagination">
+                <span>Página {{ meta.page }} de {{ meta.pages }} &mdash; {{ meta.total }} resultado{{ meta.total|pluralize:"s" }}</span>
+                <div class="pagination-links">
+                    {% if meta.page > 1 %}
+                    <a class="page-btn" href="?{% if current_filters.q %}q={{ current_filters.q }}&{% endif %}{% if current_filters.perfil %}perfil={{ current_filters.perfil }}&{% endif %}page={{ meta.page|add:"-1" }}">&lsaquo;</a>
+                    {% else %}
+                    <span class="page-btn" disabled>&lsaquo;</span>
+                    {% endif %}
+
+                    {% if meta.page < meta.pages %}
+                    <a class="page-btn" href="?{% if current_filters.q %}q={{ current_filters.q }}&{% endif %}{% if current_filters.perfil %}perfil={{ current_filters.perfil }}&{% endif %}page={{ meta.page|add:"1" }}">&rsaquo;</a>
+                    {% else %}
+                    <span class="page-btn" disabled>&rsaquo;</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="empty-state">
+                <p>Nenhum usuário encontrado</p>
+                <p>Tente ajustar os filtros de busca.</p>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</section>
+{% endblock %}

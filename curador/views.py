@@ -32,19 +32,24 @@ from django.views.decorators.http import require_POST
 
 from api_client.client import (
     ApiError,
+    add_responsavel_bem,
     excluir_artigo_admin,
     fetch_all_bens_materiais,
     fetch_all_curadorias,
     fetch_artigo_admin,
     fetch_artigos_por_bem,
     fetch_auditoria,
+    fetch_curadores,
     fetch_curadoria,
     invalidate_bens_cache,
     list_artigos_admin,
     list_auditorias,
+    list_users,
     normalize_bem_material,
+    remove_responsavel_bem,
     restaurar_auditoria,
     update_curadoria_avaliacao,
+    update_user_perfil,
 )
 from pesquisa.models import Usuario
 
@@ -66,6 +71,23 @@ def curador_or_admin_required(view_func):
             return view_func(request, *args, **kwargs)
 
         messages.error(request, "Acesso restrito para perfis de curador ou admin.")
+        return redirect("home")
+
+    return _wrapped
+
+
+def admin_required(view_func):
+    """Restringe a view exclusivamente a usuários com perfil admin."""
+
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+
+        if request.user.is_superuser or getattr(request.user, "perfil", None) == Usuario.PerfilUsuario.ADMIN:
+            return view_func(request, *args, **kwargs)
+
+        messages.error(request, "Acesso restrito para administradores.")
         return redirect("home")
 
     return _wrapped
@@ -114,6 +136,10 @@ def _status_label(status: str) -> str:
 
 def _field_label(field_name: str) -> str:
     labels = {
+        "id": "ID do usuário",
+        "nome": "Nome",
+        "email": "E-mail",
+        "perfil": "Perfil",
         "codigo_iphan": "Código IPHAN",
         "nome_bem": "Nome do bem",
         "nomes_populares": "Nome popular",
@@ -398,10 +424,15 @@ def _op_class(operacao: str) -> str:
 
 # Campos que aparecem sempre no detalhe de auditoria (contexto do registro),
 # mesmo que não tenham sido modificados nessa operação.
-_AUDIT_ALWAYS_SHOW = {"nome_bem", "natureza", "tipo", "publicado", "artigo_titulo"}
+_AUDIT_ALWAYS_SHOW = {"nome_bem", "natureza", "tipo", "publicado", "artigo_titulo", "id", "nome", "email"}
 
 # Ordem preferencial de exibição dos campos na tabela de auditoria.
 _AUDIT_FIELD_ORDER = [
+    # Usuário (contexto de alteração de perfil)
+    "id",
+    "nome",
+    "email",
+    "perfil",
     # BemMaterial
     "nome_bem",
     "natureza",
@@ -653,6 +684,39 @@ def curadoria_fila(request):
             return getattr(resp, "email", None) == user_email
         curadorias = [c for c in curadorias if _is_meu(c)]
 
+    sort = request.GET.get("sort", "criado_em")
+    sort_dir = request.GET.get("dir", "desc")
+    if sort not in ("nome", "criado_em"):
+        sort = "criado_em"
+    if sort_dir not in ("asc", "desc"):
+        sort_dir = "desc"
+
+    if sort == "nome":
+        curadorias.sort(key=lambda c: (c.nome_display or "").lower(), reverse=(sort_dir == "desc"))
+    else:
+        curadorias.sort(
+            key=lambda c: c.criado_em.isoformat() if c.criado_em else "",
+            reverse=(sort_dir == "desc"),
+        )
+
+    def _sort_url(col: str) -> str:
+        new_dir = "desc" if (sort == col and sort_dir == "asc") else "asc"
+        qs = request.GET.copy()
+        qs["sort"] = col
+        qs["dir"] = new_dir
+        qs.pop("page", None)
+        return "?" + qs.urlencode()
+
+    def _sort_arrow(col: str) -> str:
+        if sort != col:
+            return "⇅"
+        return "▲" if sort_dir == "asc" else "▼"
+
+    sort_cols = {
+        "nome": {"url": _sort_url("nome"), "arrow": _sort_arrow("nome"), "active": sort == "nome"},
+        "criado_em": {"url": _sort_url("criado_em"), "arrow": _sort_arrow("criado_em"), "active": sort == "criado_em"},
+    }
+
     paginator = Paginator(curadorias, 10)
     page_obj = paginator.get_page(request.GET.get("page"))
 
@@ -666,6 +730,9 @@ def curadoria_fila(request):
             "total_pendentes": total_antes_filtro,
             "total_filtrado": len(curadorias),
             "conflitos": total_conflitos,
+            "sort": sort,
+            "sort_dir": sort_dir,
+            "sort_cols": sort_cols,
         },
     )
 
@@ -786,7 +853,25 @@ def curadoria_revisao(request, curadoria_id):
     if request.method == "POST":
         action = request.POST.get("action", "")
 
-        if action == "rejeitar":
+        if action == "add_responsavel":
+            bem_id = curadoria_raw.get("bem_material_id") or ""
+            if bem_id:
+                try:
+                    add_responsavel_bem(bem_id, request.POST.get("user_id") or "", request.POST.get("papel") or "")
+                except ApiError as exc:
+                    messages.error(request, f"Não foi possível adicionar responsável: {exc}")
+            return redirect("curadoria-revisao", curadoria_id=curadoria_id)
+
+        elif action == "remove_responsavel":
+            bem_id = curadoria_raw.get("bem_material_id") or ""
+            if bem_id:
+                try:
+                    remove_responsavel_bem(bem_id, request.POST.get("responsavel_id") or "")
+                except ApiError as exc:
+                    messages.error(request, f"Não foi possível remover responsável: {exc}")
+            return redirect("curadoria-revisao", curadoria_id=curadoria_id)
+
+        elif action == "rejeitar":
             payload = {
                 "status": "rejeitado",
                 "acao_resultante": "rejeitar",
@@ -909,6 +994,33 @@ def curadoria_revisao(request, curadoria_id):
         }
     )
 
+    _avatar_colors = ["#22C55E", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#BA9F8B"]
+    responsaveis_bem = []
+    for i, r in enumerate(official_site_raw.get("responsaveis") or []):
+        if not isinstance(r, dict):
+            continue
+        u = r.get("usuario") or {}
+        if isinstance(u, dict) and "data" in u:
+            u = u.get("data") or {}
+        nome = u.get("name") or u.get("nome") or ""
+        palavras = nome.split()
+        iniciais = ("".join(p[0].upper() for p in palavras[:2])) if palavras else "?"
+        responsaveis_bem.append({
+            "id": r.get("id") or "",
+            "user_id": r.get("user_id") or "",
+            "papel": r.get("papel") or "",
+            "nome": nome,
+            "email": u.get("email") or "",
+            "iniciais": iniciais,
+            "cor": _avatar_colors[i % len(_avatar_colors)],
+        })
+
+    curadores_list: list[dict] = []
+    try:
+        curadores_list = fetch_curadores()
+    except ApiError:
+        pass
+
     iphan = official_site_raw.get("codigo_iphan") or incoming_data.get("codigo_iphan") or "IPHAN não informado"
 
     return render(
@@ -935,6 +1047,8 @@ def curadoria_revisao(request, curadoria_id):
                 ensure_ascii=False,
                 default=str,
             ),
+            "responsaveis_bem": responsaveis_bem,
+            "curadores_list": curadores_list,
             "bem_material_id_inicial": curadoria_raw.get("bem_material_id") or "",
         },
     )
@@ -966,18 +1080,29 @@ def audit_logs(request):
     query = request.GET.get("q", "").strip().lower()
     filtro = request.GET.get("filtro", "").strip()
     responsavel_q = request.GET.get("responsavel", "").strip().lower()
+    curadoria_id_q = request.GET.get("curadoria_id", "").strip()
     page = max(1, int(request.GET.get("page", 1) or 1))
 
     current_filters = {
         "q": request.GET.get("q", "").strip(),
         "filtro": filtro,
         "responsavel": request.GET.get("responsavel", "").strip(),
+        "curadoria_id": curadoria_id_q,
     }
 
-    entidade_tipo_param = _AUDIT_ENTIDADE_MAP.get(filtro)
+    if curadoria_id_q:
+        entidade_tipo_param = "App\\Models\\Curadoria"
+        entidade_id_param = curadoria_id_q
+    else:
+        entidade_tipo_param = _AUDIT_ENTIDADE_MAP.get(filtro)
+        entidade_id_param = None
 
     try:
-        items, meta = list_auditorias(page=page, entidade_tipo=entidade_tipo_param)
+        items, meta = list_auditorias(
+            page=page,
+            entidade_tipo=entidade_tipo_param,
+            entidade_id=entidade_id_param,
+        )
     except ApiError:
         items, meta = [], {"total": 0, "page": 1, "pages": 1, "per_page": 50}
 
@@ -1292,3 +1417,45 @@ def excluir_artigo_view(request, artigo_id: str):
     except ApiError as exc:
         messages.error(request, f"Não foi possível excluir o artigo: {exc}")
     return redirect("artigos-lista")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Usuários (admin only)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@admin_required
+def lista_usuarios(request):
+    q = request.GET.get("q", "").strip()
+    perfil = request.GET.get("perfil", "").strip()
+    page = max(1, int(request.GET.get("page", 1) or 1))
+
+    try:
+        usuarios, meta = list_users(q=q or None, perfil=perfil or None, page=page)
+    except ApiError as exc:
+        messages.error(request, exc.message or "Erro ao carregar usuários.")
+        usuarios, meta = [], {"total": 0, "page": 1, "pages": 1, "per_page": 20}
+
+    return render(
+        request,
+        "curador/usuarios_lista.html",
+        {
+            "active_section": "usuarios",
+            "usuarios": [_namespace(u) for u in usuarios],
+            "meta": meta,
+            "current_filters": {"q": q, "perfil": perfil},
+            "perfis": ["coletor", "curador"],
+        },
+    )
+
+
+@admin_required
+@require_POST
+def atualizar_perfil_usuario(request, user_id: str):
+    perfil = (request.POST.get("perfil") or "").strip()
+    try:
+        update_user_perfil(user_id, perfil)
+        messages.success(request, "Perfil atualizado com sucesso.")
+    except ApiError as exc:
+        messages.error(request, exc.message or "Erro ao atualizar perfil.")
+    return redirect(reverse("usuarios-lista"))

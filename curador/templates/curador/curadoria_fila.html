@@ -2,10 +2,16 @@
 {% load static %}
 
 {% block shell_class %}shell--flush{% endblock %}
-{% block title %}Fila de Curadoria | Stratigraphy Manager{% endblock %}
+{% block title %}Fila de Curadoria | Coletum{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/curadoria_fila.css' %}">
+<style>
+.sort-arrow { font-size: 11px; opacity: 0.6; }
+.sort-arrow.active { opacity: 1; color: #312113; }
+th a { color: inherit; text-decoration: none; }
+th a:hover { text-decoration: underline; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -52,8 +58,8 @@
                 <thead>
                     <tr>
                         <th>ID e conflito</th>
-                        <th>Nome popular</th>
-                        <th>Data de entrada</th>
+                        <th><a href="{{ sort_cols.nome.url }}">Nome popular <span class="sort-arrow {% if sort_cols.nome.active %}active{% endif %}">{{ sort_cols.nome.arrow }}</span></a></th>
+                        <th><a href="{{ sort_cols.criado_em.url }}">Data de entrada <span class="sort-arrow {% if sort_cols.criado_em.active %}active{% endif %}">{{ sort_cols.criado_em.arrow }}</span></a></th>
                         <th>Status</th>
                         <th style="text-align:right;">Ações</th>
                     </tr>
@@ -109,10 +115,10 @@
                 </span>
                 <div class="pagination-btns">
                     {% if page_obj.has_previous %}
-                        <a class="btn-page" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">Anterior</a>
+                        <a class="btn-page" href="?page={{ page_obj.previous_page_number }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}&sort={{ sort }}&dir={{ sort_dir }}">Anterior</a>
                     {% endif %}
                     {% if page_obj.has_next %}
-                        <a class="btn-page" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">Próxima</a>
+                        <a class="btn-page" href="?page={{ page_obj.next_page_number }}{% if current_filters.q %}&q={{ current_filters.q }}{% endif %}&sort={{ sort }}&dir={{ sort_dir }}">Próxima</a>
                     {% endif %}
                 </div>
             </div>

@@ -2,6 +2,7 @@ import json
 import logging
 from types import SimpleNamespace
 
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
@@ -14,10 +15,10 @@ from api_client.client import (
     excluir_bem_material,
     fetch_all_bens_materiais,
     fetch_artigos_por_bem,
-    fetch_auditorias_for_bem,
     fetch_bem_material,
     fetch_colaboradores_por_bem,
     fetch_curadores,
+    fetch_curadorias_por_bem,
     invalidate_bens_cache,
     normalize_bem_material,
     remover_vinculo_artigo,
@@ -27,8 +28,6 @@ from api_client.client import (
 )
 
 logger = logging.getLogger(__name__)
-
-ENTITY_TYPE_BEM_MATERIAL = "App\\Models\\BemMaterial"
 
 
 class RemoteRelationList(list):
@@ -386,22 +385,18 @@ def site_detail(request, sitio_id):
                 payload["artigo_id"] = artigo_id
             try:
                 submeter_artigo(payload)
-                from django.contrib import messages as _messages
-                _messages.success(request, "Sugestão enviada para curadoria.")
+                messages.success(request, "Sugestão enviada para curadoria.")
             except ApiError as exc:
-                from django.contrib import messages as _messages
-                _messages.error(request, f"Não foi possível enviar a sugestão: {exc}")
+                messages.error(request, f"Não foi possível enviar a sugestão: {exc}")
             return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
         elif action == "remover_vinculo":
             vinculo_id = request.POST.get("vinculo_id", "")
             try:
                 remover_vinculo_artigo(vinculo_id)
-                from django.contrib import messages as _messages
-                _messages.success(request, "Vínculo removido com sucesso.")
+                messages.success(request, "Vínculo removido com sucesso.")
             except ApiError as exc:
-                from django.contrib import messages as _messages
-                _messages.error(request, f"Não foi possível remover o vínculo: {exc}")
+                messages.error(request, f"Não foi possível remover o vínculo: {exc}")
             return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
         elif action == "atualizar_curador_responsavel":
@@ -411,11 +406,9 @@ def site_detail(request, sitio_id):
             try:
                 updated_site = atualizar_curador_responsavel(sitio_id, curador_id)
                 current_site = _site_payload(updated_site)
-                from django.contrib import messages as _messages
-                _messages.success(request, "Curador responsável atualizado com sucesso.")
+                messages.success(request, "Curador responsável atualizado com sucesso.")
             except ApiError as exc:
-                from django.contrib import messages as _messages
-                _messages.error(request, f"Não foi possível atualizar o curador responsável: {exc}")
+                messages.error(request, f"Não foi possível atualizar o curador responsável: {exc}")
             return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
         elif action == "excluir_bem":
@@ -424,12 +417,10 @@ def site_detail(request, sitio_id):
             try:
                 excluir_bem_material(sitio_id)
                 invalidate_bens_cache()
-                from django.contrib import messages as _messages
-                _messages.success(request, "Bem material excluído com sucesso.")
+                messages.success(request, "Bem material excluído com sucesso.")
                 return redirect("pesquisa-lista")
             except ApiError as exc:
-                from django.contrib import messages as _messages
-                _messages.error(request, f"Não foi possível excluir o bem material: {exc}")
+                messages.error(request, f"Não foi possível excluir o bem material: {exc}")
                 return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
     first_image = None
@@ -439,14 +430,6 @@ def site_detail(request, sitio_id):
             break
 
     hero_image_url = getattr(first_image, "url", "") if first_image else ""
-
-    try:
-        audit_entries = [
-            _as_namespace(entry)
-            for entry in fetch_auditorias_for_bem(current_site.id, entidade_tipo=ENTITY_TYPE_BEM_MATERIAL)
-        ]
-    except ApiError:
-        audit_entries = []
 
     try:
         artigos = fetch_artigos_por_bem(sitio_id)
@@ -467,9 +450,14 @@ def site_detail(request, sitio_id):
         colaboradores_erro = f"HTTP {_colabs_exc.status_code}: {_colabs_exc.message}"
 
     curadores_list: list = []
+    curadorias_bem: list = []
     if is_curador_or_admin:
         try:
             curadores_list = fetch_curadores()
+        except ApiError:
+            pass
+        try:
+            curadorias_bem = [_as_namespace(c) for c in fetch_curadorias_por_bem(sitio_id)]
         except ApiError:
             pass
 
@@ -488,13 +476,13 @@ def site_detail(request, sitio_id):
             "nav_active": "detalhe",
             "sitio": current_site,
             "hero_image_url": hero_image_url,
-            "audit_entries": audit_entries,
             "site_geometry_geojson": site_geometry_geojson,
             "artigos": artigos,
             "colaboradores": colaboradores,
             "colaboradores_erro": colaboradores_erro,
             "is_curador_or_admin": is_curador_or_admin,
             "curadores_list": curadores_list,
+            "curadorias_bem": curadorias_bem,
         },
     )
 

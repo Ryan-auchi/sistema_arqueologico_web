@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block shell_class %}shell--flush{% endblock %}
-{% block title %}Análise de Conflito | Stratigraphy Manager{% endblock %}
+{% block title %}Análise de Conflito | Coletum{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/curadoria_revisao.css' %}">
@@ -202,13 +202,27 @@
     <div class="merge-action-bar">
         <div class="merge-info">
             <div class="merge-avatars">
-                <div class="avatar-circle" style="background:#22C55E; z-index:3">AM</div>
-                <div class="avatar-circle" style="background:#BA9F8B; z-index:2">BC</div>
-                <div class="avatar-circle" style="background:#615E5C; z-index:1">+2</div>
+                {% if responsaveis_bem %}
+                    {% for r in responsaveis_bem|slice:":3" %}
+                        <div class="avatar-circle" style="background:{{ r.cor }}; z-index:{{ forloop.revcounter }};" title="{{ r.nome }} ({{ r.papel }})">{{ r.iniciais }}</div>
+                    {% endfor %}
+                    {% if responsaveis_bem|length > 3 %}
+                        <div class="avatar-circle" style="background:#615E5C; z-index:0;">+{{ responsaveis_bem|length|add:"-3" }}</div>
+                    {% endif %}
+                {% else %}
+                    <div class="avatar-circle" style="background:#D1C4B5;">—</div>
+                {% endif %}
             </div>
             <div>
                 <p class="field-label">Agentes de revisão</p>
-                <p style="font-size:14px; font-weight:500">{{ curadoria.usuario.nome|default:"Equipe de curadoria" }} está responsável por esta análise.</p>
+                {% if responsaveis_bem %}
+                    <p style="font-size:14px; font-weight:500;">{% for r in responsaveis_bem %}{{ r.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                {% else %}
+                    <p style="font-size:14px; color:#80756d;">Nenhum responsável atribuído</p>
+                {% endif %}
+                {% if bem_material_id_inicial %}
+                    <button type="button" data-modal-open="modal-responsaveis" style="font-size:12px; color:var(--figma-brown-dark); background:none; border:none; cursor:pointer; padding:0; margin-top:2px; text-decoration:underline;">Gerenciar responsáveis</button>
+                {% endif %}
             </div>
         </div>
         <div style="display:flex; gap:12px; flex-wrap:wrap;">
@@ -217,6 +231,75 @@
         </div>
     </div>
     </form>
+
+    {% if bem_material_id_inicial %}
+    <dialog id="modal-responsaveis" style="border:none; border-radius:8px; padding:0; box-shadow:0 8px 32px rgba(0,0,0,0.18); max-width:520px; width:100%;">
+        <div style="padding:28px 32px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+                <div>
+                    <p style="font-size:16px; font-weight:700; color:#312113; margin:0;">Responsáveis pelo sítio</p>
+                    <p style="font-size:13px; color:#80756d; margin:4px 0 0;">Curadores e pesquisadores associados a este bem material.</p>
+                </div>
+                <button type="button" data-modal-close="modal-responsaveis" aria-label="Fechar" style="background:none; border:none; cursor:pointer; color:#615E5C; padding:4px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            {% if responsaveis_bem %}
+            <div style="margin-bottom:20px; display:flex; flex-direction:column; gap:8px;">
+                {% for r in responsaveis_bem %}
+                <div style="display:flex; align-items:center; justify-content:space-between; background:#f9f7f5; border-radius:6px; padding:10px 14px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="avatar-circle" style="background:{{ r.cor }}; width:32px; height:32px; font-size:11px; flex-shrink:0;">{{ r.iniciais }}</div>
+                        <div>
+                            <p style="font-size:14px; font-weight:600; color:#312113; margin:0;">{{ r.nome }}</p>
+                            <p style="font-size:11px; color:#80756d; margin:0; text-transform:capitalize;">{{ r.papel|default:"—" }}</p>
+                        </div>
+                    </div>
+                    <form method="post" action="{% url 'curadoria-revisao' curadoria.id %}" style="margin:0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="remove_responsavel">
+                        <input type="hidden" name="responsavel_id" value="{{ r.id }}">
+                        <button type="submit" title="Remover" style="background:none; border:none; cursor:pointer; color:#ba1a1a; padding:4px; display:flex; align-items:center;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if curadores_list %}
+            <form method="post" action="{% url 'curadoria-revisao' curadoria.id %}" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_responsavel">
+                <p style="font-size:12px; font-weight:700; text-transform:uppercase; color:#80756d; letter-spacing:0.5px; margin:0 0 10px;">Adicionar responsável</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:end;">
+                    <div>
+                        <label style="font-size:11px; font-weight:600; color:#80756d; display:block; margin-bottom:4px;">Usuário</label>
+                        <select name="user_id" required style="width:100%; padding:8px 10px; border:1px solid #D2C4BB; border-radius:4px; font-size:13px; background:#fff;">
+                            <option value="" disabled selected>Selecione…</option>
+                            {% for c in curadores_list %}
+                                <option value="{{ c.id }}">{{ c.name|default:c.email }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:11px; font-weight:600; color:#80756d; display:block; margin-bottom:4px;">Papel</label>
+                        <select name="papel" required style="width:100%; padding:8px 10px; border:1px solid #D2C4BB; border-radius:4px; font-size:13px; background:#fff;">
+                            <option value="curador">Curador</option>
+                            <option value="pesquisador">Pesquisador</option>
+                            <option value="responsavel_tecnico">Responsável Técnico</option>
+                            <option value="coordenador">Coordenador</option>
+                        </select>
+                    </div>
+                    <button type="submit" style="padding:8px 16px; background:var(--figma-brown-dark); color:#fff; border:none; border-radius:4px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">Adicionar</button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </dialog>
+    {% endif %}
 
     <section class="audit-section">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">

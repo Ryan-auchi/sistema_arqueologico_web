@@ -3,7 +3,6 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 
-from conftest import SITE_FAKE
 from pesquisa.models import Usuario
 
 
@@ -88,7 +87,8 @@ class TestAuthLogout:
         client.force_login(coletor_user)
         client.session["api_auth_token"] = "tok"
         client.session.save()
-        response = client.post(reverse("auth-logout"))
+        with patch("core.views.logout_from_api"):
+            response = client.post(reverse("auth-logout"))
         assert response.status_code == 302
         assert "api_auth_token" not in client.session
 
@@ -231,26 +231,7 @@ class TestAuthPasswordReset:
 
 @pytest.mark.django_db
 class TestHome:
-    def test_home_carrega_sem_api(self, client):
-        """Home deve renderizar mesmo quando a API está indisponível."""
-        from api_client.client import ApiError
-
-        with patch("core.views.fetch_all_bens_materiais", side_effect=ApiError("offline")):
-            response = client.get(reverse("home"))
-        assert response.status_code == 200
-
-    def test_home_com_dados_popula_contadores(self, client):
-        site_sp = {**SITE_FAKE, "id": "s1", "uf": "SP"}
-        site_pi = {**SITE_FAKE, "id": "s2", "uf": "PI"}
-        with patch("core.views.fetch_all_bens_materiais", return_value=(site_sp, site_pi)):
-            response = client.get(reverse("home"))
-        assert response.status_code == 200
-        assert response.context["site_count"] == 2
-
-    def test_home_contagem_de_estados_unicos(self, client):
-        s1 = {**SITE_FAKE, "id": "s1", "uf": "SP"}
-        s2 = {**SITE_FAKE, "id": "s2", "uf": "SP"}
-        s3 = {**SITE_FAKE, "id": "s3", "uf": "PI"}
-        with patch("core.views.fetch_all_bens_materiais", return_value=(s1, s2, s3)):
-            response = client.get(reverse("home"))
-        assert response.context["state_count"] == 2
+    def test_home_redireciona_para_mapa(self, client):
+        response = client.get(reverse("home"))
+        assert response.status_code == 302
+        assert "mapa" in response["Location"]

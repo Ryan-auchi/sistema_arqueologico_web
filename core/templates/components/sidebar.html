@@ -2,7 +2,7 @@
     <nav class="sidebar-nav">
         <a href="{% url 'home' %}" class="queue-nav-link {% if active_section == 'home' %}active{% endif %}">
             <span class="nav-icon"></span>
-            Dashboard
+            Painel
         </a>
         <a href="{% url 'curadoria-fila' %}" class="queue-nav-link {% if active_section == 'curadoria' %}active{% endif %}">
             <span class="nav-icon"></span>
@@ -16,5 +16,11 @@
             <span class="nav-icon"></span>
             Artigos científicos
         </a>
+        {% if request.user.perfil == 'admin' or request.user.is_superuser %}
+        <a href="{% url 'usuarios-lista' %}" class="queue-nav-link {% if active_section == 'usuarios' %}active{% endif %}">
+            <span class="nav-icon"></span>
+            Usuários
+        </a>
+        {% endif %}
     </nav>
 </aside>

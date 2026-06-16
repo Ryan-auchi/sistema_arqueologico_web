@@ -35,10 +35,10 @@
                     </a>
 
                     <nav class="nav-links" aria-label="Navegação principal">
-                        <a href="{% url 'pesquisa-mapa' %}" class="nav-link {% if nav_active == 'home' or nav_active == 'mapa' or nav_active == 'detalhe' %}active{% endif %}">Explore</a>
+                        <a href="{% url 'pesquisa-mapa' %}" class="nav-link {% if nav_active == 'home' or nav_active == 'mapa' or nav_active == 'detalhe' %}active{% endif %}">Explorar</a>
                         {% if request.user.is_authenticated %}
                             {% if request.user.perfil == 'curador' or request.user.perfil == 'admin' or request.user.is_superuser %}
-                            <a href="{% url 'curadoria-fila' %}" class="nav-link {% if nav_active == 'curadoria' or nav_active == 'lista' or nav_active == 'audit' %}active{% endif %}">Curate</a>
+                            <a href="{% url 'curadoria-fila' %}" class="nav-link {% if nav_active == 'curadoria' or nav_active == 'lista' or nav_active == 'audit' %}active{% endif %}">Curadoria</a>
                             {% endif %}
                         {% endif %}
                     </nav>
@@ -70,11 +70,15 @@
                             {% if request.user.is_authenticated %}
                                 <p class="auth-title">Sessão ativa</p>
                                 <p class="auth-meta">{{ request.user.nome|default:request.user.email }} ({{ request.user.get_perfil_display }})</p>
+                                <p class="auth-meta" style="font-size:11px; font-family:monospace; word-break:break-all; color:#80756d; margin-top:2px;">ID: {{ request.user.api_id|default:"—" }}</p>
                                 <form method="post" action="{% url 'auth-logout' %}">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                     <button class="button button-primary auth-submit" type="submit">Deslogar</button>
                                 </form>
+                                <div class="auth-popover-footer">
+                                    <button type="button" class="auth-text-btn" style="color:#c0392b;" data-modal-open="modal-excluir-conta">Excluir minha conta</button>
+                                </div>
                             {% else %}
                                 <p class="auth-title">Entrar</p>
                                 <form method="post" action="{% url 'auth-login' %}" class="auth-form">
@@ -152,6 +156,26 @@
                 <label for="reset-email">Email</label>
                 <input id="reset-email" name="email" type="email" required autocomplete="email">
                 <button class="button button-primary auth-submit" type="submit">Enviar instruções</button>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="modal-excluir-conta" class="auth-modal" aria-labelledby="modal-excluir-title">
+        <div class="auth-modal-inner">
+            <div class="auth-modal-header">
+                <div>
+                    <p class="auth-title" id="modal-excluir-title">Excluir minha conta</p>
+                    <p class="auth-meta">Seus dados pessoais serão removidos permanentemente. Suas contribuições científicas permanecem no sistema.</p>
+                </div>
+                <button type="button" class="auth-modal-close" data-modal-close="modal-excluir-conta" aria-label="Fechar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <p style="font-size:13px;color:#80756d;margin-bottom:12px;">Para confirmar, digite <strong>EXCLUIR</strong> no campo abaixo.</p>
+            <form method="post" action="{% url 'excluir-conta' %}" class="auth-form">
+                {% csrf_token %}
+                <input id="excluir-confirm" name="confirmar" type="text" autocomplete="off" placeholder="EXCLUIR" style="font-family:monospace;">
+                <button id="btn-excluir-conta" class="button button-primary auth-submit" type="submit" style="background:#c0392b;border-color:#c0392b;" disabled>Excluir minha conta</button>
             </form>
         </div>
     </dialog>
