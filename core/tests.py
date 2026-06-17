@@ -111,6 +111,7 @@ class TestAuthRegister:
                     "classificacao": "estudante",
                     "password": "senha123",
                     "password_confirmation": "senha123",
+                    "accepted_terms": "on",
                 },
             )
         assert response.status_code == 302
@@ -142,6 +143,7 @@ class TestAuthRegister:
                     "classificacao": "estudante",
                     "password": "senha123",
                     "password_confirmation": "senha123",
+                    "accepted_terms": "on",
                 },
             )
         assert response.status_code == 302
@@ -158,6 +160,7 @@ class TestAuthRegister:
                     "classificacao": "estudante",
                     "password": "senha123",
                     "password_confirmation": "senha123",
+                    "accepted_terms": "on",
                 },
             )
         assert response.status_code == 302
@@ -180,6 +183,7 @@ class TestAuthRegister:
                     "classificacao": "professor",
                     "password": "senha123",
                     "password_confirmation": "senha123",
+                    "accepted_terms": "on",
                 },
             )
         coletor_user.refresh_from_db()
@@ -196,9 +200,26 @@ class TestAuthRegister:
                     "classificacao": "estudante",
                     "password": "senha123",
                     "password_confirmation": "senha123",
+                    "accepted_terms": "on",
                 },
             )
         assert response.status_code == 302
+
+    def test_post_sem_aceite_termos_nao_chama_api(self, client):
+        with patch("core.views.register_to_api") as mock_api:
+            response = client.post(
+                reverse("auth-register"),
+                {
+                    "name": "Sem Termos",
+                    "email": "semtermos@test.com",
+                    "classificacao": "estudante",
+                    "password": "senha123",
+                    "password_confirmation": "senha123",
+                },
+            )
+        mock_api.assert_not_called()
+        assert response.status_code == 302
+        assert not Usuario.objects.filter(email="semtermos@test.com").exists()
 
 
 @pytest.mark.django_db
