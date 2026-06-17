@@ -8,10 +8,12 @@ from .views import (
     auth_register,
     excluir_conta,
     home,
+    termos,
 )
 
 urlpatterns = [
     path("", home, name="home"),
+    path("termos/", termos, name="termos"),
     path("auth/login/", auth_login, name="auth-login"),
     path("auth/logout/", auth_logout, name="auth-logout"),
     path("auth/register/", auth_register, name="auth-register"),
