@@ -119,17 +119,6 @@
                         </div>
                     </div>
 
-                    <div style="margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div class="status-card">
-                            <div style="font-family: 'Liberation Serif'; font-size: 30px;">8.5k</div>
-                            <span class="info-label">Artefatos Coletados</span>
-                        </div>
-                        <div class="status-card" style="background: var(--figma-brown-dark); color: white;">
-                            <div style="font-family: 'Liberation Serif'; font-size: 30px;">Lítico</div>
-                            <span class="info-label" style="color: rgba(255,255,255,0.7);">Indústria</span>
-                        </div>
-                    </div>
-
                     {% if request.user.perfil in "admin,curador" or request.user.is_superuser %}
                     <form method="post" class="publish-toggle-panel">
                         {% csrf_token %}

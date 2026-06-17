@@ -32,7 +32,6 @@
 .info-value { font-size: 16px; font-weight: 500; color: var(--figma-brown-dark); margin-top: 4px; }
 
 .gray-box { background: #F3F4F5; border-radius: 4px; padding: 32px; margin-bottom: 40px; }
-.status-card { background: #EDEEEF; border-radius: 8px; padding: 24px; }
 .tag-figma { background: #E1E3E4; padding: 4px 8px; font-size: 10px; font-weight: 700; color: #4E453E; text-transform: uppercase; }
 
 .publish-toggle-panel {
