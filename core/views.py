@@ -20,6 +20,10 @@ def home(request):
     return redirect("pesquisa-mapa")
 
 
+def termos(request):
+    return render(request, "core/termos.html")
+
+
 def _safe_redirect_target(request, fallback_name="home"):
     next_url = request.POST.get("next") or request.GET.get("next")
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
@@ -98,6 +102,10 @@ def auth_register(request):
 
     if password != password_confirmation:
         messages.error(request, "As senhas não coincidem.")
+        return redirect(_safe_redirect_target(request))
+
+    if not request.POST.get("accepted_terms"):
+        messages.error(request, "Você precisa aceitar os Termos de Uso para criar uma conta.")
         return redirect(_safe_redirect_target(request))
 
     try:
