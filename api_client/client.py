@@ -243,7 +243,7 @@ def _normalize_relations(site: dict[str, Any]) -> dict[str, Any]:
     for r in (responsaveis_raw if isinstance(responsaveis_raw, list) else []):
         if not isinstance(r, dict):
             continue
-        u = r.get("usuario") or {}
+        u = r.get("user") or r.get("usuario") or {}
         if isinstance(u, dict) and "data" in u:
             u = u.get("data") or {}
         responsaveis.append({
@@ -263,14 +263,20 @@ def _normalize_relations(site: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_artefatos(site: dict[str, Any]) -> list[str]:
-    # Novo formato: artefato_tipos[].artefato_tipo.nome (pivot tables)
     pivot = site.get("artefato_tipos")
     if isinstance(pivot, list) and pivot:
-        return [
-            _normalize_text(entry.get("artefato_tipo", {}).get("nome"))
-            for entry in pivot
-            if isinstance(entry, dict) and isinstance(entry.get("artefato_tipo"), dict)
-        ]
+        nomes = []
+        for entry in pivot:
+            if not isinstance(entry, dict):
+                continue
+            # Formato flat: {"id": ..., "nome": ...}
+            nome = _normalize_text(entry.get("nome"))
+            if not nome:
+                # Formato aninhado legado: {"artefato_tipo": {"nome": ...}}
+                nome = _normalize_text(entry.get("artefato_tipo", {}).get("nome"))
+            if nome:
+                nomes.append(nome)
+        return nomes
     # Formato legado: artefatos como lista de strings
     legacy = site.get("artefatos")
     if isinstance(legacy, list):
@@ -307,10 +313,10 @@ def normalize_bem_material(site: dict[str, Any]) -> dict[str, Any]:
         "published_label": "Publicado" if published else "Nao publicado",
         "uf": _normalize_text(site.get("uf")).upper(),
         "municipio": _normalize_text(site.get("municipio")),
-        "cep": _normalize_text(site.get("cep")),
-        "endereco": _normalize_text(site.get("endereco")),
-        "latitude": _normalize_number(site.get("latitude")),
-        "longitude": _normalize_number(site.get("longitude")),
+        "cep": _normalize_text((site.get("localizacao") or {}).get("cep") or site.get("cep")),
+        "endereco": _normalize_text((site.get("localizacao") or {}).get("logradouro") or site.get("endereco")),
+        "latitude": _normalize_number((site.get("localizacao") or {}).get("lat") or site.get("latitude")),
+        "longitude": _normalize_number((site.get("localizacao") or {}).get("lng") or site.get("longitude")),
         "geojson": geojson,
         "geometry": geometry,
         "geometry_type": geometry.get("type", "") if isinstance(geometry, dict) else "",
