@@ -134,9 +134,9 @@
                 <input id="reg-password" name="password" type="password" required minlength="8" autocomplete="new-password">
                 <label for="reg-password-confirm">Confirmar senha</label>
                 <input id="reg-password-confirm" name="password_confirmation" type="password" required minlength="8" autocomplete="new-password">
-                <div style="display:flex;align-items:flex-start;gap:8px;margin:4px 0 8px;font-size:13px;">
-                    <input id="reg-terms" name="accepted_terms" type="checkbox" required style="margin-top:3px;">
-                    <label for="reg-terms" style="font-weight:400;cursor:pointer;">Li e aceito os <a href="{% url 'termos' %}" target="_blank" rel="noopener">Termos de Uso e Política de Privacidade</a></label>
+                <div style="display:flex;align-items:flex-start;gap:8px;margin:4px 0 8px;">
+                    <input id="reg-terms" name="accepted_terms" type="checkbox" required style="appearance:auto;-webkit-appearance:auto;width:16px;height:16px;min-height:0;flex:0 0 auto;margin:2px 0 0;padding:0;border:none;border-radius:3px;">
+                    <label for="reg-terms" style="font-weight:400;text-transform:none;letter-spacing:normal;font-size:13px;line-height:1.4;color:inherit;cursor:pointer;">Li e aceito os <a href="{% url 'termos' %}" target="_blank" rel="noopener">Termos de Uso e Política de Privacidade</a></label>
                 </div>
                 <button class="button button-primary auth-submit" type="submit">Criar conta</button>
             </form>
