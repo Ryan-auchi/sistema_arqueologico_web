@@ -64,6 +64,7 @@ def _site_payload(site):
     midias = RemoteRelationList(
         [_as_namespace(media) for media in normalized.get("midias") or [] if isinstance(media, dict)]
     )
+    imagens = RemoteRelationList([media for media in midias if getattr(media, "tipo", None) == "imagem"])
     responsavel = (
         _as_namespace(normalized.get("responsavel") or {}) if isinstance(normalized.get("responsavel"), dict) else {}
     )
@@ -112,6 +113,7 @@ def _site_payload(site):
         "atualizado_em": _as_datetime(normalized.get("atualizado_em")),
         "deletado_em": _as_datetime(normalized.get("deletado_em")),
         "midias": midias,
+        "imagens": imagens,
         "responsavel": responsavel,
         "curador_responsavel": curador_responsavel,
         "raw": normalized,

@@ -176,7 +176,7 @@
                 </div>
 
                 <div class="media-grid">
-                    {% for img in sitio.midias.all %}
+                    {% for img in sitio.imagens.all %}
                         <div class="media-item {% if forloop.first %}media-main{% endif %}">
                             <img src="{{ img.url }}" alt="{{ img.descricao }}">
                         </div>
