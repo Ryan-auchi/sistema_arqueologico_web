@@ -123,6 +123,8 @@ def register_to_api(
             "password": password,
             "password_confirmation": password_confirmation,
             "classificacao": classificacao,
+            # core.views.register só chega aqui depois de conferir a caixa de aceite.
+            "termos_aceitos": True,
         },
         base_url=API_AUTH_BASE_URL,
     )

@@ -486,9 +486,11 @@ class TestLoginToApi:
 class TestRegisterToApi:
     def test_sucesso_retorna_token_e_usuario(self):
         payload = {"token": "tok-reg", "user": {"id": "u2"}}
-        with patch("api_client.client._request", return_value=payload):
+        with patch("api_client.client._request", return_value=payload) as mock_request:
             token, user = register_to_api("João", "j@test.com", "senha", "senha", "estudante")
         assert token == "tok-reg"
+        # P22: a API guarda a data do aceite dos termos.
+        assert mock_request.call_args.kwargs["json_body"]["termos_aceitos"] is True
 
     def test_token_ausente_levanta_api_error(self):
         with patch("api_client.client._request", return_value={}):
