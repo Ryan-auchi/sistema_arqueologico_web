@@ -18,6 +18,13 @@
         maxZoom: 20,
     }).addTo(map);
 
+    // O popup do Leaflet interpreta HTML: todo texto vindo da API precisa de escape.
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        }[c]));
+    }
+
     const markerLayer = L.layerGroup().addTo(map);
     const geometryLayer = L.layerGroup().addTo(map);
     const polygonShapes = [];
@@ -66,8 +73,8 @@
 
         results.forEach((site) => {
             const isPublished = Boolean(site.published);
-            const detailUrl = `/pesquisa/sitio/${site.id}/`;
-            const popupHtml = `<strong>${site.name}</strong><br>${site.code || ''}<br>Status: ${site.published_label || 'Nao publicado'}<br>${site.municipality || ''} - ${site.state || ''}<br><a href="${detailUrl}">Abrir detalhe</a>`;
+            const detailUrl = `/pesquisa/sitio/${encodeURIComponent(site.id)}/`;
+            const popupHtml = `<strong>${escapeHtml(site.name)}</strong><br>${escapeHtml(site.code)}<br>Status: ${escapeHtml(site.published_label || 'Nao publicado')}<br>${escapeHtml(site.municipality)} - ${escapeHtml(site.state)}<br><a href="${detailUrl}">Abrir detalhe</a>`;
 
             if (site.geometry && (site.geometry.type === 'Polygon' || site.geometry.type === 'MultiPolygon')) {
                 const polygon = L.geoJSON(site.geometry, {

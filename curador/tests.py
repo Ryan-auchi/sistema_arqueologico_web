@@ -397,6 +397,28 @@ class TestCuradoriaRevisaoColeta:
         assert response.status_code == 200
         assert len(response.context["sitios_proximos"]) >= 1
 
+    def test_nome_de_sitio_proximo_nao_fecha_o_script(self, client, curador_user):
+        client.force_login(curador_user)
+        malicioso = {
+            **SITE_FAKE,
+            "id": "s-mal",
+            "latitude": -8.50,
+            "longitude": -42.62,
+            "nome_bem": "</script><script>alert(1)</script>",
+        }
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.fetch_curadores", return_value=[]),
+            patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)),
+            patch("curador.views.fetch_all_bens_materiais", return_value=(malicioso,)),
+        ):
+            response = client.get(reverse("curadoria-revisao", args=["cur-001"]))
+
+        html = response.content.decode()
+        assert response.status_code == 200
+        assert "</script><script>alert(1)" not in html
+        assert "\\u003C/script\\u003E" in html
+
     def test_get_curadoria_nao_encontrada_retorna_404(self, client, curador_user):
         from api_client.client import ApiError
         client.force_login(curador_user)

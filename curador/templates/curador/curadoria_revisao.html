@@ -92,8 +92,9 @@
         </div>
     </div>
 
+    {{ sitios_proximos_dados|json_script:"sitios-proximos-data" }}
     <script>
-    const SITIOS_PROXIMOS_DATA = {{ sitios_proximos_json|safe }};
+    const SITIOS_PROXIMOS_DATA = JSON.parse(document.getElementById('sitios-proximos-data').textContent);
     </script>
     {% endif %}
 

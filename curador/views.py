@@ -1039,14 +1039,11 @@ def curadoria_revisao(request, curadoria_id):
             "merged": request.GET.get("merged") == "1",
             "default_published": bool(official_site_raw.get("publicado")) if official_site_raw else False,
             "sitios_proximos": sitios_proximos,
-            "sitios_proximos_json": json.dumps(
-                [
-                    {k: v for k, v in s.items() if not isinstance(v, (dict, list)) or k in ("artefatos",)}
-                    for s in sitios_proximos
-                ],
-                ensure_ascii=False,
-                default=str,
-            ),
+            # Vai para o template via json_script, que escapa < > & (evita fechar o <script>).
+            "sitios_proximos_dados": [
+                {k: v for k, v in s.items() if not isinstance(v, (dict, list)) or k in ("artefatos",)}
+                for s in sitios_proximos
+            ],
             "responsaveis_bem": responsaveis_bem,
             "curadores_list": curadores_list,
             "bem_material_id_inicial": curadoria_raw.get("bem_material_id") or "",
