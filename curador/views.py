@@ -838,6 +838,15 @@ def _handle_revisao_artigo(request, curadoria_id: str, curadoria_raw: dict):
     )
 
 
+# Valores do enum TipoBem da API.
+_TIPOS_BEM = [
+    ("sitio", "Sítio"),
+    ("bemOuConjunto", "Bem ou conjunto"),
+    ("acervoOuColecao", "Acervo ou coleção"),
+    ("colecao", "Coleção"),
+]
+
+
 @curador_or_admin_required
 def curadoria_revisao(request, curadoria_id):
     """
@@ -903,6 +912,9 @@ def curadoria_revisao(request, curadoria_id):
             }
             if acao == "atualizarSitio":
                 payload["bem_material_id"] = bem_id
+            else:
+                # D2: o tipo do sítio novo é decisão do curador; a API recusa a criação sem ele.
+                payload["tipo"] = request.POST.get("tipo_confirmado") or None
 
             # Campos selecionados pelo curador — aplicado tanto em criarSitio
             # quanto em atualizarSitio para respeitar a seleção do curador.
@@ -1057,6 +1069,8 @@ def curadoria_revisao(request, curadoria_id):
             "responsaveis_bem": responsaveis_bem,
             "curadores_list": curadores_list,
             "bem_material_id_inicial": curadoria_raw.get("bem_material_id") or "",
+            "tipos_bem": _TIPOS_BEM,
+            "tipo_sugerido": incoming_data.get("tipo") or "",
         },
     )
 

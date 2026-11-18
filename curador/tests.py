@@ -493,6 +493,32 @@ class TestCuradoriaRevisaoColeta:
         assert payload["acao_resultante"] == "criarSitio"
         assert response.status_code == 302
 
+    def test_post_criar_sitio_envia_o_tipo_escolhido_pelo_curador(self, client, curador_user):
+        """P26 (D2): o tipo do sítio novo vem do curador, não da coleta."""
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.update_curadoria_avaliacao", return_value={}) as mock_update,
+            patch("curador.views.invalidate_bens_cache"),
+        ):
+            client.post(
+                reverse("curadoria-revisao", args=["cur-001"]),
+                {"action": "aprovar_mesclar", "selected_fields": "[]", "tipo_confirmado": "colecao"},
+            )
+        assert mock_update.call_args[0][1]["tipo"] == "colecao"
+
+    def test_get_marca_o_tipo_sugerido_pelo_coletor(self, client, curador_user):
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.fetch_curadores", return_value=[]),
+            patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)),
+            patch("curador.views.fetch_all_bens_materiais", return_value=()),
+        ):
+            response = client.get(reverse("curadoria-revisao", args=["cur-001"]))
+        html = response.content.decode()
+        assert '<option value="sitio" selected>Sítio (sugestão do coletor)</option>' in html
+
     def test_post_acao_desconhecida_redireciona_de_volta(self, client, curador_user):
         client.force_login(curador_user)
         with patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE):

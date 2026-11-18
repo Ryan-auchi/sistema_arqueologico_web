@@ -199,6 +199,15 @@
                             Exibir este sítio no mapa e na lista
                         </label>
                     </div>
+                    <div class="publish-toggle-row">
+                        <label class="field-label" for="tipo-confirmado-select">Tipo do bem (sítio novo)</label>
+                        <select id="tipo-confirmado-select" name="tipo_confirmado" style="width:100%; margin-top:6px; padding:8px 10px; border:1px solid var(--figma-border); border-radius:4px; font-size:13px;">
+                            <option value="">Escolha o tipo</option>
+                            {% for valor, rotulo in tipos_bem %}
+                                <option value="{{ valor }}" {% if valor == tipo_sugerido %}selected{% endif %}>{{ rotulo }}{% if valor == tipo_sugerido %} (sugestão do coletor){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
