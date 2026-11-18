@@ -10,6 +10,7 @@ from django.utils.dateparse import parse_datetime
 
 from api_client.client import (
     ApiError,
+    atualizar_codigo_iphan,
     atualizar_curador_responsavel,
     buscar_artigo_por_doi,
     excluir_bem_material,
@@ -357,6 +358,8 @@ def site_detail(request, sitio_id):
         action = request.POST.get("action", "")
 
         if action == "toggle_publicado":
+            if not is_curador_or_admin:
+                raise Http404
             publish_selected = request.POST.get("published_selected") == "1"
             try:
                 updated_site = toggle_publicado_bem_material(sitio_id, publish_selected)
@@ -411,6 +414,17 @@ def site_detail(request, sitio_id):
                 messages.success(request, "Curador responsável atualizado com sucesso.")
             except ApiError as exc:
                 messages.error(request, f"Não foi possível atualizar o curador responsável: {exc}")
+            return redirect("pesquisa-detalhe", sitio_id=sitio_id)
+
+        elif action == "atualizar_codigo_iphan":
+            if not is_curador_or_admin:
+                raise Http404
+            try:
+                atualizar_codigo_iphan(sitio_id, request.POST.get("codigo_iphan", "").strip() or None)
+                invalidate_bens_cache()
+                messages.success(request, "Código IPHAN atualizado com sucesso.")
+            except ApiError as exc:
+                messages.error(request, f"Não foi possível atualizar o código IPHAN: {exc}")
             return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
         elif action == "excluir_bem":

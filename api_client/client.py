@@ -665,6 +665,18 @@ def atualizar_curador_responsavel(bem_id: str, curador_responsavel_id: str | Non
     return normalize_bem_material(data)
 
 
+def atualizar_codigo_iphan(bem_id: str, codigo_iphan: str | None) -> dict[str, Any]:
+    response = _request(
+        "PATCH",
+        f"/admin/bens-materiais/{bem_id}/codigo-iphan",
+        json_body={"codigo_iphan": codigo_iphan},
+    )
+    data = response.get("data") if isinstance(response, dict) and isinstance(response.get("data"), dict) else response
+    if not isinstance(data, dict):
+        raise ApiError("API response for codigo iphan update was not an object")
+    return normalize_bem_material(data)
+
+
 def excluir_bem_material(bem_id: str) -> None:
     _request("DELETE", f"/admin/bens-materiais/{bem_id}")
 
