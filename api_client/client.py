@@ -43,9 +43,9 @@ def _current_api_auth_token() -> str:
     return token
 
 
-def _headers() -> dict[str, str]:
+def _headers(sem_token: bool = False) -> dict[str, str]:
     headers = {"Accept": "application/json"}
-    token = _current_api_auth_token()
+    token = "" if sem_token else _current_api_auth_token()
     if token:
         headers["Authorization"] = f"Bearer {token}"
     return headers
@@ -58,6 +58,7 @@ def _request(
     params: dict[str, Any] | None = None,
     json_body: dict[str, Any] | None = None,
     base_url: str | None = None,
+    sem_token: bool = False,
 ) -> dict[str, Any]:
     request_base_url = (base_url or API_BASE_URL).rstrip("/")
     url = urljoin(f"{request_base_url}/", path.lstrip("/"))
@@ -66,7 +67,7 @@ def _request(
         url=url,
         params=params,
         json=json_body,
-        headers=_headers(),
+        headers=_headers(sem_token),
         timeout=API_TIMEOUT,
     )
 
@@ -191,6 +192,13 @@ def _normalize_text(value: Any) -> str:
     return str(value).strip()
 
 
+def _normalize_lista_texto(value: Any) -> str:
+    """A API devolve listas (ex.: nomes populares); a interface mostra texto separado por vírgula."""
+    if isinstance(value, list):
+        return ", ".join(texto for texto in (_normalize_text(item) for item in value) if texto)
+    return _normalize_text(value)
+
+
 def _normalize_number(value: Any) -> float | None:
     if value in (None, ""):
         return None
@@ -303,7 +311,7 @@ def normalize_bem_material(site: dict[str, Any]) -> dict[str, Any]:
         "coleta_id": _normalize_text(site.get("coleta_id")),
         "codigo_iphan": _normalize_text(site.get("codigo_iphan")),
         "nome_bem": _normalize_text(site.get("nome_bem")),
-        "nomes_populares": _normalize_text(site.get("nomes_populares")),
+        "nomes_populares": _normalize_lista_texto(site.get("nomes_populares")),
         "natureza": natureza,
         "tipo": tipo,
         "meios_acesso": _normalize_text(site.get("meios_acesso")),
@@ -432,7 +440,9 @@ def fetch_all_bens_materiais() -> tuple[dict[str, Any], ...]:
     results: list[dict[str, Any]] = []
 
     while True:
-        payload = _request("GET", "/mobile/bens-materiais", params={"page": page, "publicado": "all"})
+        # O cache é compartilhado entre todos os usuários: busca sempre como visitante,
+        # para não guardar dados que só um curador pode ver (ex.: e-mails).
+        payload = _request("GET", "/mobile/bens-materiais", params={"page": page, "publicado": "all"}, sem_token=True)
         items, meta = _unwrap_paginated(payload)
 
         results.extend(normalize_bem_material(item) for item in items)

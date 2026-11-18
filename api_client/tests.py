@@ -379,6 +379,46 @@ class TestHeaders:
         set_api_auth_token(None)
         assert "Authorization" not in client_module._headers()
 
+    def test_sem_token_ignora_token_da_sessao(self):
+        set_api_auth_token("tok")
+        assert "Authorization" not in client_module._headers(sem_token=True)
+
+
+class TestCacheDeBensSemToken:
+    """O cache de bens é compartilhado entre usuários: não pode guardar dados de curador."""
+
+    def setup_method(self):
+        clear_api_auth_token()
+        client_module.invalidate_bens_cache()
+
+    def teardown_method(self):
+        clear_api_auth_token()
+        client_module.invalidate_bens_cache()
+
+    def test_cache_busca_bens_como_visitante_mesmo_com_curador_logado(self):
+        set_api_auth_token("token-de-curador")
+        resposta = MagicMock(status_code=200, content=b"x", text="")
+        resposta.json.return_value = {"data": [], "last_page": 1}
+
+        with patch("requests.request", return_value=resposta) as chamada:
+            client_module.fetch_all_bens_materiais()
+
+        assert "Authorization" not in chamada.call_args.kwargs["headers"]
+
+
+class TestNomesPopulares:
+    def test_lista_vira_texto_separado_por_virgula(self):
+        site = client_module.normalize_bem_material({"id": "1", "nomes_populares": ["Pedra Furada", "Toca"]})
+        assert site["nomes_populares"] == "Pedra Furada, Toca"
+
+    def test_lista_vazia_vira_texto_vazio(self):
+        site = client_module.normalize_bem_material({"id": "1", "nomes_populares": []})
+        assert site["nomes_populares"] == ""
+
+    def test_texto_continua_texto(self):
+        site = client_module.normalize_bem_material({"id": "1", "nomes_populares": "Toca"})
+        assert site["nomes_populares"] == "Toca"
+
 
 class TestRequest:
     def _mock_response(self, status=200, json_data=None, text="", content=b"x"):

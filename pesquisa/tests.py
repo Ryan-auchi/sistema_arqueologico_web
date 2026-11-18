@@ -106,6 +106,14 @@ class TestApiSites:
         assert response.status_code == 200
         assert response.json()["count"] == 0
 
+    def test_resposta_publica_nao_inclui_dados_brutos(self, client):
+        with patch("pesquisa.views.fetch_all_bens_materiais", return_value=(SITE_FAKE,)):
+            response = client.get(reverse("api-sitios"))
+
+        dados = response.json()
+        assert dados["count"] == 1
+        assert all("raw" not in site for site in dados["results"])
+
 
 @pytest.mark.django_db
 class TestSiteDetail:

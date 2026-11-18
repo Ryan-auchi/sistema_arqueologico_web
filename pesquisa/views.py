@@ -504,7 +504,11 @@ def api_sites(request):
     return JsonResponse(
         {
             "count": len(sites),
-            "results": [_site_payload_to_dict(site) for site in sites],
+            # "raw" é só para uso interno (filtros); fora da resposta pública.
+            "results": [
+                {chave: valor for chave, valor in _site_payload_to_dict(site).items() if chave != "raw"}
+                for site in sites
+            ],
             "filters": current_filters,
         }
     )
