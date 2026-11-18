@@ -32,6 +32,8 @@ from django.views.decorators.http import require_POST
 
 from api_client.client import (
     ApiError,
+    _normalize_artefatos,
+    _normalize_lista_texto,
     add_responsavel_bem,
     excluir_artigo_admin,
     fetch_all_bens_materiais,
@@ -282,12 +284,20 @@ def _incoming_data(curadoria_raw: dict) -> dict:
 
     # Normaliza aliases entre coleta e bem_material.
     incoming["nome_bem"] = incoming.get("nome_bem") or bem.get("nome_bem") or ""
-    incoming["nomes_populares"] = incoming.get("nomes_populares") or bem.get("nomes_populares") or ""
+    incoming["nomes_populares"] = _normalize_lista_texto(incoming.get("nomes_populares")) or _normalize_lista_texto(
+        bem.get("nomes_populares")
+    )
     incoming["codigo_iphan"] = bem.get("codigo_iphan") or incoming.get("codigo_iphan") or ""
     incoming["natureza"] = incoming.get("natureza_bem") or incoming.get("natureza") or bem.get("natureza") or ""
     incoming["tipo"] = incoming.get("tipo_bem") or incoming.get("tipo") or bem.get("tipo") or ""
     incoming["meios_acesso"] = incoming.get("meios_acesso") or bem.get("meios_acesso") or ""
-    incoming["artefatos"] = incoming.get("artefatos") or bem.get("artefatos") or []
+    incoming["artefatos"] = _normalize_artefatos(coleta) or _normalize_artefatos(bem)
+    # Só http(s): a URL vai para <img src> e <a href> na revisão.
+    incoming["fotos"] = [
+        m["url"]
+        for m in coleta.get("midias") or []
+        if isinstance(m, dict) and str(m.get("url") or "").startswith(("https://", "http://"))
+    ]
     incoming["uf"] = incoming.get("uf") or bem.get("uf") or ""
     incoming["municipio"] = incoming.get("municipio") or bem.get("municipio") or ""
     incoming["cep"] = incoming.get("cep") or bem.get("cep") or ""

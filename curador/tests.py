@@ -419,6 +419,41 @@ class TestCuradoriaRevisaoColeta:
         assert "</script><script>alert(1)" not in html
         assert "\\u003C/script\\u003E" in html
 
+    def test_get_mostra_artefatos_fotos_e_nomes_da_coleta(self, client, curador_user):
+        """P17: a API manda relações do modelo (listas de dicts); a revisão mostra os nomes e as fotos."""
+        client.force_login(curador_user)
+        coleta = {
+            **CURADORIA_COLETA_EXISTENTE_FAKE["coleta"],
+            "dados_coletados": {"nomes_populares": "Toca da Onça"},
+            "artefato_tipos": [
+                {"artefato_tipo": {"nome": "Cerâmica"}},
+                {"novo_tipo": True, "descricao_nova": "Contas de vidro", "artefato_tipo": {"nome": "Outros"}},
+            ],
+            "midias": [{"url": "https://fotos.example/1.jpg"}, {"url": "javascript:alert(1)"}],
+        }
+        curadoria = {
+            **CURADORIA_COLETA_EXISTENTE_FAKE,
+            "coleta": coleta,
+            "bem_material": {**SITE_FAKE, "nomes_populares": [{"nome": "Pedra Furada"}]},
+        }
+        with (
+            patch("curador.views.fetch_curadoria", return_value=curadoria),
+            patch("curador.views.fetch_curadores", return_value=[]),
+            patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)),
+            patch("curador.views.fetch_all_bens_materiais", return_value=()),
+        ):
+            response = client.get(reverse("curadoria-revisao", args=["cur-003"]))
+
+        incoming = response.context["incoming_data"]
+        assert incoming["artefatos"] == ["Cerâmica", "Contas de vidro"]
+        assert incoming["fotos"] == ["https://fotos.example/1.jpg"]
+        nomes = next(c for c in response.context["comparisons"] if c["field_name"] == "nomes_populares")
+        assert (nomes["incoming_value"], nomes["official_value"]) == ("Toca da Onça", "Pedra Furada")
+        html = response.content.decode()
+        assert 'src="https://fotos.example/1.jpg"' in html
+        assert "javascript:alert" not in html
+        assert "unsplash" not in html
+
     def test_get_curadoria_nao_encontrada_retorna_404(self, client, curador_user):
         from api_client.client import ApiError
         client.force_login(curador_user)

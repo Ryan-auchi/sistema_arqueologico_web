@@ -323,15 +323,22 @@
     gap: 8px;
     height: 128px;
     margin-top: 8px;
+    overflow-x: auto;
 }
 
 .media-img {
-    flex: 1;
+    flex: 1 0 96px;
     background: #DDD;
     border-radius: 2px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    background-size: cover;
-    background-position: center;
+    overflow: hidden;
+}
+
+.media-img img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .merge-action-bar {

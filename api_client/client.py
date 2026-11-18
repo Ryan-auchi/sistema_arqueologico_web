@@ -193,9 +193,13 @@ def _normalize_text(value: Any) -> str:
 
 
 def _normalize_lista_texto(value: Any) -> str:
-    """A API devolve listas (ex.: nomes populares); a interface mostra texto separado por vírgula."""
+    """A API devolve listas (ex.: nomes populares); a interface mostra texto separado por vírgula.
+
+    Aceita ["A", "B"] (resource) e [{"nome": "A"}] (modelo, como na revisão de curadoria).
+    """
     if isinstance(value, list):
-        return ", ".join(texto for texto in (_normalize_text(item) for item in value) if texto)
+        textos = (_normalize_text(item.get("nome") if isinstance(item, dict) else item) for item in value)
+        return ", ".join(texto for texto in textos if texto)
     return _normalize_text(value)
 
 
@@ -280,8 +284,9 @@ def _normalize_artefatos(site: dict[str, Any]) -> list[str]:
             # Formato flat: {"id": ..., "nome": ...}
             nome = _normalize_text(entry.get("nome"))
             if not nome:
-                # Formato aninhado legado: {"artefato_tipo": {"nome": ...}}
-                nome = _normalize_text(entry.get("artefato_tipo", {}).get("nome"))
+                # Formato do modelo (revisão de curadoria): {"descricao_nova": ..., "artefato_tipo": {"nome": ...}}.
+                # Em "Outros", a descrição diz o que foi achado.
+                nome = _normalize_text(entry.get("descricao_nova") or (entry.get("artefato_tipo") or {}).get("nome"))
             if nome:
                 nomes.append(nome)
         return nomes
