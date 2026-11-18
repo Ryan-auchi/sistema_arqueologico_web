@@ -27,6 +27,8 @@ API_AUTH_BASE_URL = os.environ.get(
     API_BASE_URL.rsplit("/v1", 1)[0] if API_BASE_URL.endswith("/api/v1") else API_BASE_URL,
 ).rstrip("/")
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", "15"))
+# Mesmo valor de WEB_CLIENT_KEY na API: o site ganha limite próprio em vez de dividir o de um visitante.
+API_CLIENT_KEY = os.environ.get("API_CLIENT_KEY", "")
 _API_AUTH_TOKEN_CONTEXT: ContextVar[str] = ContextVar("api_auth_token", default="")
 
 
@@ -45,6 +47,8 @@ def _current_api_auth_token() -> str:
 
 def _headers(sem_token: bool = False) -> dict[str, str]:
     headers = {"Accept": "application/json"}
+    if API_CLIENT_KEY:
+        headers["X-Client-Key"] = API_CLIENT_KEY
     token = "" if sem_token else _current_api_auth_token()
     if token:
         headers["Authorization"] = f"Bearer {token}"

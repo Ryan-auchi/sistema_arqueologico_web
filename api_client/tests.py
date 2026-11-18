@@ -383,6 +383,13 @@ class TestHeaders:
         set_api_auth_token("tok")
         assert "Authorization" not in client_module._headers(sem_token=True)
 
+    def test_chave_do_site_vai_no_cabecalho(self):
+        # P23: com a chave, a API dá ao site um limite próprio.
+        with patch.object(client_module, "API_CLIENT_KEY", "segredo"):
+            assert client_module._headers(sem_token=True)["X-Client-Key"] == "segredo"
+        with patch.object(client_module, "API_CLIENT_KEY", ""):
+            assert "X-Client-Key" not in client_module._headers()
+
 
 class TestCacheDeBensSemToken:
     """O cache de bens é compartilhado entre usuários: não pode guardar dados de curador."""
