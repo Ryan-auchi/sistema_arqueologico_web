@@ -10,6 +10,7 @@ from django.utils.dateparse import parse_datetime
 
 from api_client.client import (
     ApiError,
+    atualizar_codigo_iphan,
     atualizar_curador_responsavel,
     buscar_artigo_por_doi,
     excluir_bem_material,
@@ -64,6 +65,7 @@ def _site_payload(site):
     midias = RemoteRelationList(
         [_as_namespace(media) for media in normalized.get("midias") or [] if isinstance(media, dict)]
     )
+    imagens = RemoteRelationList([media for media in midias if getattr(media, "tipo", None) == "imagem"])
     responsavel = (
         _as_namespace(normalized.get("responsavel") or {}) if isinstance(normalized.get("responsavel"), dict) else {}
     )
@@ -112,6 +114,7 @@ def _site_payload(site):
         "atualizado_em": _as_datetime(normalized.get("atualizado_em")),
         "deletado_em": _as_datetime(normalized.get("deletado_em")),
         "midias": midias,
+        "imagens": imagens,
         "responsavel": responsavel,
         "curador_responsavel": curador_responsavel,
         "raw": normalized,
@@ -355,6 +358,8 @@ def site_detail(request, sitio_id):
         action = request.POST.get("action", "")
 
         if action == "toggle_publicado":
+            if not is_curador_or_admin:
+                raise Http404
             publish_selected = request.POST.get("published_selected") == "1"
             try:
                 updated_site = toggle_publicado_bem_material(sitio_id, publish_selected)
@@ -409,6 +414,17 @@ def site_detail(request, sitio_id):
                 messages.success(request, "Curador responsável atualizado com sucesso.")
             except ApiError as exc:
                 messages.error(request, f"Não foi possível atualizar o curador responsável: {exc}")
+            return redirect("pesquisa-detalhe", sitio_id=sitio_id)
+
+        elif action == "atualizar_codigo_iphan":
+            if not is_curador_or_admin:
+                raise Http404
+            try:
+                atualizar_codigo_iphan(sitio_id, request.POST.get("codigo_iphan", "").strip() or None)
+                invalidate_bens_cache()
+                messages.success(request, "Código IPHAN atualizado com sucesso.")
+            except ApiError as exc:
+                messages.error(request, f"Não foi possível atualizar o código IPHAN: {exc}")
             return redirect("pesquisa-detalhe", sitio_id=sitio_id)
 
         elif action == "excluir_bem":
@@ -502,7 +518,11 @@ def api_sites(request):
     return JsonResponse(
         {
             "count": len(sites),
-            "results": [_site_payload_to_dict(site) for site in sites],
+            # "raw" é só para uso interno (filtros); fora da resposta pública.
+            "results": [
+                {chave: valor for chave, valor in _site_payload_to_dict(site).items() if chave != "raw"}
+                for site in sites
+            ],
             "filters": current_filters,
         }
     )

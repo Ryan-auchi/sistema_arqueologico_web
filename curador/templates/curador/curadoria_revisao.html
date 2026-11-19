@@ -32,7 +32,6 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="aprovar_mesclar">
         <input type="hidden" name="selected_fields" id="selected-fields-input" value="[]">
-        <input type="hidden" name="import_media_selected" id="import-media-input" value="0">
         <input type="hidden" name="published_selected" id="published-input" value="{% if default_published %}1{% else %}0{% endif %}">
         <input type="hidden" name="bem_material_id" id="bem-material-id-input" value="{{ bem_material_id_inicial }}">
 
@@ -92,8 +91,9 @@
         </div>
     </div>
 
+    {{ sitios_proximos_dados|json_script:"sitios-proximos-data" }}
     <script>
-    const SITIOS_PROXIMOS_DATA = {{ sitios_proximos_json|safe }};
+    const SITIOS_PROXIMOS_DATA = JSON.parse(document.getElementById('sitios-proximos-data').textContent);
     </script>
     {% endif %}
 
@@ -171,14 +171,19 @@
             <div class="comparison-row">
                 <div class="field-box new-data comparison-extra">
                     <div class="field-header">
-                        <span class="field-label">Fotogrametria e mídias</span>
-                        <span class="field-tag">NOVOS DADOS</span>
+                        <span class="field-label">Fotos da coleta</span>
+                        {% if incoming_data.fotos %}<span class="field-tag">NOVOS DADOS</span>{% endif %}
                     </div>
-                    <div class="media-placeholder">
-                        <div class="media-img" style="background-image: url('https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?q=80&w=200')"></div>
-                        <div class="media-img" style="background-image: url('https://images.unsplash.com/photo-1599408162299-d34f24f8dccc?q=80&w=200')"></div>
-                    </div>
-                    <button class="btn-field" type="button" id="import-media-button" data-default-label="Importar mídia">Importar mídia</button>
+                    {% if incoming_data.fotos %}
+                        <div class="media-placeholder">
+                            {% for url in incoming_data.fotos %}
+                                <a class="media-img" href="{{ url }}" target="_blank" rel="noopener noreferrer"><img src="{{ url }}" alt="Foto {{ forloop.counter }} da coleta" loading="lazy"></a>
+                            {% endfor %}
+                        </div>
+                        <div class="field-note">Ao aprovar, as fotos vão para a galeria do sítio.</div>
+                    {% else %}
+                        <div class="field-value">Nenhuma foto enviada</div>
+                    {% endif %}
                 </div>
 
                 <div class="field-box publish-toggle-card comparison-extra">
@@ -193,6 +198,15 @@
                             <input type="checkbox" id="published-checkbox" {% if default_published %}checked{% endif %}>
                             Exibir este sítio no mapa e na lista
                         </label>
+                    </div>
+                    <div class="publish-toggle-row">
+                        <label class="field-label" for="tipo-confirmado-select">Tipo do bem (sítio novo)</label>
+                        <select id="tipo-confirmado-select" name="tipo_confirmado" style="width:100%; margin-top:6px; padding:8px 10px; border:1px solid var(--figma-border); border-radius:4px; font-size:13px;">
+                            <option value="">Escolha o tipo</option>
+                            {% for valor, rotulo in tipos_bem %}
+                                <option value="{{ valor }}" {% if valor == tipo_sugerido %}selected{% endif %}>{{ rotulo }}{% if valor == tipo_sugerido %} (sugestão do coletor){% endif %}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
             </div>

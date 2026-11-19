@@ -308,6 +308,7 @@ DEBUG=False
 ALLOWED_HOSTS=seu-dominio.up.railway.app
 CSRF_TRUSTED_ORIGINS=https://seu-dominio.up.railway.app
 API_BASE_URL=https://sistemaarqueologicoapi-production.up.railway.app/api/v1
+API_CLIENT_KEY=...   # mesmo valor de WEB_CLIENT_KEY na API (limite próprio do site)
 ```
 
 ---

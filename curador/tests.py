@@ -397,6 +397,63 @@ class TestCuradoriaRevisaoColeta:
         assert response.status_code == 200
         assert len(response.context["sitios_proximos"]) >= 1
 
+    def test_nome_de_sitio_proximo_nao_fecha_o_script(self, client, curador_user):
+        client.force_login(curador_user)
+        malicioso = {
+            **SITE_FAKE,
+            "id": "s-mal",
+            "latitude": -8.50,
+            "longitude": -42.62,
+            "nome_bem": "</script><script>alert(1)</script>",
+        }
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.fetch_curadores", return_value=[]),
+            patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)),
+            patch("curador.views.fetch_all_bens_materiais", return_value=(malicioso,)),
+        ):
+            response = client.get(reverse("curadoria-revisao", args=["cur-001"]))
+
+        html = response.content.decode()
+        assert response.status_code == 200
+        assert "</script><script>alert(1)" not in html
+        assert "\\u003C/script\\u003E" in html
+
+    def test_get_mostra_artefatos_fotos_e_nomes_da_coleta(self, client, curador_user):
+        """P17: a API manda relações do modelo (listas de dicts); a revisão mostra os nomes e as fotos."""
+        client.force_login(curador_user)
+        coleta = {
+            **CURADORIA_COLETA_EXISTENTE_FAKE["coleta"],
+            "dados_coletados": {"nomes_populares": "Toca da Onça"},
+            "artefato_tipos": [
+                {"artefato_tipo": {"nome": "Cerâmica"}},
+                {"novo_tipo": True, "descricao_nova": "Contas de vidro", "artefato_tipo": {"nome": "Outros"}},
+            ],
+            "midias": [{"url": "https://fotos.example/1.jpg"}, {"url": "javascript:alert(1)"}],
+        }
+        curadoria = {
+            **CURADORIA_COLETA_EXISTENTE_FAKE,
+            "coleta": coleta,
+            "bem_material": {**SITE_FAKE, "nomes_populares": [{"nome": "Pedra Furada"}]},
+        }
+        with (
+            patch("curador.views.fetch_curadoria", return_value=curadoria),
+            patch("curador.views.fetch_curadores", return_value=[]),
+            patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)),
+            patch("curador.views.fetch_all_bens_materiais", return_value=()),
+        ):
+            response = client.get(reverse("curadoria-revisao", args=["cur-003"]))
+
+        incoming = response.context["incoming_data"]
+        assert incoming["artefatos"] == ["Cerâmica", "Contas de vidro"]
+        assert incoming["fotos"] == ["https://fotos.example/1.jpg"]
+        nomes = next(c for c in response.context["comparisons"] if c["field_name"] == "nomes_populares")
+        assert (nomes["incoming_value"], nomes["official_value"]) == ("Toca da Onça", "Pedra Furada")
+        html = response.content.decode()
+        assert 'src="https://fotos.example/1.jpg"' in html
+        assert "javascript:alert" not in html
+        assert "unsplash" not in html
+
     def test_get_curadoria_nao_encontrada_retorna_404(self, client, curador_user):
         from api_client.client import ApiError
         client.force_login(curador_user)
@@ -435,6 +492,32 @@ class TestCuradoriaRevisaoColeta:
         payload = mock_update.call_args[0][1]
         assert payload["acao_resultante"] == "criarSitio"
         assert response.status_code == 302
+
+    def test_post_criar_sitio_envia_o_tipo_escolhido_pelo_curador(self, client, curador_user):
+        """P26 (D2): o tipo do sítio novo vem do curador, não da coleta."""
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.update_curadoria_avaliacao", return_value={}) as mock_update,
+            patch("curador.views.invalidate_bens_cache"),
+        ):
+            client.post(
+                reverse("curadoria-revisao", args=["cur-001"]),
+                {"action": "aprovar_mesclar", "selected_fields": "[]", "tipo_confirmado": "colecao"},
+            )
+        assert mock_update.call_args[0][1]["tipo"] == "colecao"
+
+    def test_get_marca_o_tipo_sugerido_pelo_coletor(self, client, curador_user):
+        client.force_login(curador_user)
+        with (
+            patch("curador.views.fetch_curadoria", return_value=CURADORIA_COLETA_NOVA_FAKE),
+            patch("curador.views.fetch_curadores", return_value=[]),
+            patch("curador.views.list_auditorias", return_value=([], PAGINACAO_VAZIA)),
+            patch("curador.views.fetch_all_bens_materiais", return_value=()),
+        ):
+            response = client.get(reverse("curadoria-revisao", args=["cur-001"]))
+        html = response.content.decode()
+        assert '<option value="sitio" selected>Sítio (sugestão do coletor)</option>' in html
 
     def test_post_acao_desconhecida_redireciona_de_volta(self, client, curador_user):
         client.force_login(curador_user)

@@ -4,7 +4,6 @@
     const selectedFields = new Set();
 
     const selectedFieldsInput = document.getElementById('selected-fields-input');
-    const importMediaInput = document.getElementById('import-media-input');
     const publishedInput = document.getElementById('published-input');
     const publishedCheckbox = document.getElementById('published-checkbox');
     const publishedStatusChip = document.getElementById('published-status-chip');
@@ -40,17 +39,6 @@
             syncFields();
         });
     });
-
-    const mediaButton = document.getElementById('import-media-button');
-    if (mediaButton && importMediaInput) {
-        const defaultLabel = mediaButton.getAttribute('data-default-label') || 'Importar mídia';
-        mediaButton.addEventListener('click', function () {
-            const isSelected = importMediaInput.value === '1';
-            importMediaInput.value = isSelected ? '0' : '1';
-            mediaButton.classList.toggle('is-undo', !isSelected);
-            mediaButton.textContent = isSelected ? defaultLabel : 'Desfazer';
-        });
-    }
 
     if (publishedCheckbox && publishedInput) {
         publishedCheckbox.addEventListener('change', function () {

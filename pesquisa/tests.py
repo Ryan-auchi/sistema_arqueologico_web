@@ -106,6 +106,14 @@ class TestApiSites:
         assert response.status_code == 200
         assert response.json()["count"] == 0
 
+    def test_resposta_publica_nao_inclui_dados_brutos(self, client):
+        with patch("pesquisa.views.fetch_all_bens_materiais", return_value=(SITE_FAKE,)):
+            response = client.get(reverse("api-sitios"))
+
+        dados = response.json()
+        assert dados["count"] == 1
+        assert all("raw" not in site for site in dados["results"])
+
 
 @pytest.mark.django_db
 class TestSiteDetail:
@@ -126,7 +134,8 @@ class TestSiteDetail:
         assert response.status_code == 404
 
     def test_get_carrega_artigos_e_colaboradores_no_contexto(self, client):
-        colaborador_fake = {"id": "u1", "nome": "Colaborador", "email": "col@test.com", "classificacao": "estudante", "origem": "coleta", "total_contribuicoes": 1}
+        # Para visitantes a API não manda o e-mail do colaborador.
+        colaborador_fake = {"id": "u1", "nome": "Colaborador", "classificacao": "estudante", "origem": "coleta", "total_contribuicoes": 1}
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[ARTIGO_BEM_FAKE]),
@@ -165,6 +174,49 @@ class TestSiteDetail:
             )
         mock_toggle.assert_called_once()
         assert response.status_code == 302
+
+    def test_visitante_nao_ve_o_painel_do_curador(self, client):
+        # O template usa is_curador_or_admin da view (o teste de substring aceitava perfil vazio).
+        with (
+            patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
+            patch("pesquisa.views.fetch_artigos_por_bem", return_value=[]),
+            patch("pesquisa.views.fetch_colaboradores_por_bem", return_value=[]),
+        ):
+            response = client.get(reverse("pesquisa-detalhe", args=["abc-123"]))
+        html = response.content.decode()
+        assert "Salvar publicação" not in html
+        assert "Salvar código" not in html
+
+    def test_post_codigo_iphan_curador_chama_api(self, client, curador_user):
+        """P20: o curador preenche o número do CNSA."""
+        client.force_login(curador_user)
+        with (
+            patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
+            patch("pesquisa.views.atualizar_codigo_iphan", return_value=SITE_FAKE) as mock_atualizar,
+            patch("pesquisa.views.invalidate_bens_cache"),
+        ):
+            response = client.post(
+                reverse("pesquisa-detalhe", args=["abc-123"]),
+                {"action": "atualizar_codigo_iphan", "codigo_iphan": "  PI-00123 "},
+            )
+        mock_atualizar.assert_called_once_with("abc-123", "PI-00123")
+        assert response.status_code == 302
+
+    @pytest.mark.parametrize("action", ["atualizar_codigo_iphan", "toggle_publicado"])
+    def test_post_de_gestao_por_coletor_retorna_404(self, client, coletor_user, action):
+        client.force_login(coletor_user)
+        with (
+            patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
+            patch("pesquisa.views.atualizar_codigo_iphan") as mock_iphan,
+            patch("pesquisa.views.toggle_publicado_bem_material") as mock_toggle,
+        ):
+            response = client.post(
+                reverse("pesquisa-detalhe", args=["abc-123"]),
+                {"action": action, "codigo_iphan": "PI-1", "published_selected": "1"},
+            )
+        assert response.status_code == 404
+        mock_iphan.assert_not_called()
+        mock_toggle.assert_not_called()
 
     def test_post_remover_vinculo_chama_api(self, client, curador_user):
         client.force_login(curador_user)

@@ -379,6 +379,53 @@ class TestHeaders:
         set_api_auth_token(None)
         assert "Authorization" not in client_module._headers()
 
+    def test_sem_token_ignora_token_da_sessao(self):
+        set_api_auth_token("tok")
+        assert "Authorization" not in client_module._headers(sem_token=True)
+
+    def test_chave_do_site_vai_no_cabecalho(self):
+        # P23: com a chave, a API dá ao site um limite próprio.
+        with patch.object(client_module, "API_CLIENT_KEY", "segredo"):
+            assert client_module._headers(sem_token=True)["X-Client-Key"] == "segredo"
+        with patch.object(client_module, "API_CLIENT_KEY", ""):
+            assert "X-Client-Key" not in client_module._headers()
+
+
+class TestCacheDeBensSemToken:
+    """O cache de bens é compartilhado entre usuários: não pode guardar dados de curador."""
+
+    def setup_method(self):
+        clear_api_auth_token()
+        client_module.invalidate_bens_cache()
+
+    def teardown_method(self):
+        clear_api_auth_token()
+        client_module.invalidate_bens_cache()
+
+    def test_cache_busca_bens_como_visitante_mesmo_com_curador_logado(self):
+        set_api_auth_token("token-de-curador")
+        resposta = MagicMock(status_code=200, content=b"x", text="")
+        resposta.json.return_value = {"data": [], "last_page": 1}
+
+        with patch("requests.request", return_value=resposta) as chamada:
+            client_module.fetch_all_bens_materiais()
+
+        assert "Authorization" not in chamada.call_args.kwargs["headers"]
+
+
+class TestNomesPopulares:
+    def test_lista_vira_texto_separado_por_virgula(self):
+        site = client_module.normalize_bem_material({"id": "1", "nomes_populares": ["Pedra Furada", "Toca"]})
+        assert site["nomes_populares"] == "Pedra Furada, Toca"
+
+    def test_lista_vazia_vira_texto_vazio(self):
+        site = client_module.normalize_bem_material({"id": "1", "nomes_populares": []})
+        assert site["nomes_populares"] == ""
+
+    def test_texto_continua_texto(self):
+        site = client_module.normalize_bem_material({"id": "1", "nomes_populares": "Toca"})
+        assert site["nomes_populares"] == "Toca"
+
 
 class TestRequest:
     def _mock_response(self, status=200, json_data=None, text="", content=b"x"):
@@ -446,9 +493,11 @@ class TestLoginToApi:
 class TestRegisterToApi:
     def test_sucesso_retorna_token_e_usuario(self):
         payload = {"token": "tok-reg", "user": {"id": "u2"}}
-        with patch("api_client.client._request", return_value=payload):
+        with patch("api_client.client._request", return_value=payload) as mock_request:
             token, user = register_to_api("João", "j@test.com", "senha", "senha", "estudante")
         assert token == "tok-reg"
+        # P22: a API guarda a data do aceite dos termos.
+        assert mock_request.call_args.kwargs["json_body"]["termos_aceitos"] is True
 
     def test_token_ausente_levanta_api_error(self):
         with patch("api_client.client._request", return_value={}):
