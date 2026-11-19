@@ -134,7 +134,8 @@ class TestSiteDetail:
         assert response.status_code == 404
 
     def test_get_carrega_artigos_e_colaboradores_no_contexto(self, client):
-        colaborador_fake = {"id": "u1", "nome": "Colaborador", "email": "col@test.com", "classificacao": "estudante", "origem": "coleta", "total_contribuicoes": 1}
+        # Para visitantes a API não manda o e-mail do colaborador.
+        colaborador_fake = {"id": "u1", "nome": "Colaborador", "classificacao": "estudante", "origem": "coleta", "total_contribuicoes": 1}
         with (
             patch("pesquisa.views.fetch_bem_material", return_value=SITE_FAKE),
             patch("pesquisa.views.fetch_artigos_por_bem", return_value=[ARTIGO_BEM_FAKE]),
